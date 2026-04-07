@@ -53,7 +53,7 @@ export async function saveCardState(
       .from('day_activities')
       .update({
         checklist: updatedChecklist,
-        status: existing.status === 'pending' ? 'in_progress' : existing.status,
+        status: (existing.status === 'pending' ? 'in_progress' : existing.status) as 'pending' | 'in_progress' | 'done' | 'skipped',
         updated_at: new Date().toISOString(),
       })
       .eq('id', existing.id)

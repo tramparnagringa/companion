@@ -123,8 +123,7 @@ export async function getProgramDays(
 
   return (data ?? []).map(row => ({
     ...row,
-    cards: (row.cards ?? []) as DayCard[],
-    week_themes: row.week_themes as Record<string, string>,
+    cards: (row.cards ?? []) as unknown as DayCard[],
   })) as ProgramDay[]
 }
 
@@ -147,7 +146,7 @@ export async function getProgramDay(
 
   return {
     ...data,
-    cards: (data.cards ?? []) as DayCard[],
+    cards: (data.cards ?? []) as unknown as DayCard[],
   } as ProgramDay
 }
 
