@@ -16,12 +16,13 @@ interface DayCardProps {
   card: DayCardType
   cardIndex: number
   dayNumber: number
+  enrollmentId?: string
   savedState?: Record<string, boolean>
   defaultOpen?: boolean
   onComplete?: (cardIndex: number, complete: boolean) => void
 }
 
-export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOpen = false, onComplete }: DayCardProps) {
+export function DayCard({ card, cardIndex, dayNumber, enrollmentId, savedState = {}, defaultOpen = false, onComplete }: DayCardProps) {
   const readKey     = `card_${cardIndex}_read`
   const executedKey = `card_${cardIndex}_executed`
   const checkKey    = (i: number) => `card_${cardIndex}_check_${i}`
@@ -54,19 +55,19 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
   function toggleRead() {
     const next = !read
     setRead(next)
-    startTransition(() => { saveCardState(dayNumber, readKey, next) })
+    startTransition(() => { saveCardState(dayNumber, readKey, next, enrollmentId) })
   }
 
   function toggleExecuted() {
     const next = !executed
     setExecuted(next)
-    startTransition(() => { saveCardState(dayNumber, executedKey, next) })
+    startTransition(() => { saveCardState(dayNumber, executedKey, next, enrollmentId) })
   }
 
   function toggleCheck(i: number) {
     const next = !checks[i]
     setChecks(prev => prev.map((v, idx) => idx === i ? next : v))
-    startTransition(() => { saveCardState(dayNumber, checkKey(i), next) })
+    startTransition(() => { saveCardState(dayNumber, checkKey(i), next, enrollmentId) })
   }
 
   return (

@@ -3,7 +3,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { TodayCards } from '@/components/today/today-cards'
 import { DayNotes } from '@/components/today/day-notes'
-import { DAYS, getCurrentDay, getStreak } from '@/lib/days'
+import { DAYS, WEEK_THEMES, getCurrentDay, getStreak } from '@/lib/days'
 import type { DayDefinition } from '@/lib/days'
 import { ensureEnrollment, getProgramDay } from '@/lib/programs'
 import type { ProgramDay } from '@/lib/programs'
@@ -21,69 +21,54 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const { data: activities } = await supabase
-    .from('day_activities')
-    .select('day_number, status, completed_at')
-    .eq('user_id', user!.id)
-
-  const allActivities = activities ?? []
-  const completedDayNumbers = allActivities.filter(a => a.status === 'done').map(a => a.day_number)
-  const streak = getStreak(allActivities)
-
-  // Resolve enrollment and program day if not passed from parent
+  // Resolve enrollment if not provided by parent
   let enrollmentId = enrollmentIdProp
   let totalDays = totalDaysProp ?? 30
   let programDay = programDayProp
+  let programId: string | undefined
 
   if (programDay === undefined) {
     const enrollment = await ensureEnrollment(user!.id, supabase)
     if (enrollment) {
       enrollmentId = enrollment.id
       totalDays = enrollment.program.total_days
-      programDay = await getProgramDay(enrollment.program_id, dayNumber, supabase)
+      programId = enrollment.program_id
     }
+  } else if (programDay) {
+    programId = programDay.program_id
   }
 
-  const currentDay = getCurrentDay(completedDayNumbers, totalDays)
+  // Parallel fetch: all activities (streak + progress) + current day state + notes + programDay
+  const [
+    { data: activities },
+    { data: activity },
+    { data: dayNotes },
+    resolvedProgramDay,
+  ] = await Promise.all([
+    supabase.from('day_activities').select('day_number, status, completed_at').eq('user_id', user!.id),
+    supabase.from('day_activities').select('status, checklist').eq('user_id', user!.id).eq('day_number', dayNumber).maybeSingle(),
+    (supabase as any).from('action_notes').select('id, title, content, type, checklist, completed, created_at').eq('user_id', user!.id).eq('day_number', dayNumber).order('created_at', { ascending: true }),
+    programDay === undefined && programId ? getProgramDay(programId, dayNumber, supabase) : Promise.resolve(programDay ?? null),
+  ])
 
-  // Build a DayDefinition-compatible object — from DB or fallback to hardcoded
+  if (programDay === undefined) programDay = resolvedProgramDay
+
+  const allActivities = activities ?? []
+  const completedDayNumbers = allActivities.filter(a => a.status === 'done').map(a => a.day_number)
+  const streak = getStreak(allActivities)
+  const currentDay = getCurrentDay(completedDayNumbers, totalDays)
+  const activityStatus = activity?.status ?? 'pending'
+  const savedState = (activity?.checklist as Record<string, boolean>) ?? {}
+
   const dayDef: DayDefinition | undefined = programDay
     ? { number: dayNumber, week: programDay.week_number, name: programDay.name, description: programDay.description ?? '', cards: programDay.cards }
     : DAYS.find(d => d.number === dayNumber)
 
   if (!dayDef) notFound()
 
-  // Fetch next day for completion banners
-  let nextDay: { day_number: number; week_number: number } | null = null
-  if (programDay && enrollmentId) {
-    const next = await getProgramDay(programDay.program_id, dayNumber + 1, supabase)
-    if (next) nextDay = { day_number: next.day_number, week_number: next.week_number }
-  } else {
-    const next = DAYS.find(d => d.number === dayNumber + 1)
-    if (next) nextDay = { day_number: next.number, week_number: next.week }
-  }
-
-  // Week themes — from program or fallback to hardcoded WEEK_THEMES
-  const weekThemes: Record<string, string> = programDay
-    ? {} // program week_themes come from the program row; we'd need to pass them — use WEEK_THEMES as fallback
-    : { 1: 'Semana 1 — Clareza', 2: 'Semana 2 — Construção', 3: 'Semana 3 — Escalar', 4: 'Semana 4 — Performar' }
-
-  const { data: activity } = await supabase
-    .from('day_activities')
-    .select('status, checklist')
-    .eq('user_id', user!.id)
-    .eq('day_number', dayNumber)
-    .single()
-
-  const activityStatus = activity?.status ?? 'pending'
-  const savedState = (activity?.checklist as Record<string, boolean>) ?? {}
-
-  const { data: dayNotes } = await (supabase as any)
-    .from('action_notes')
-    .select('id, title, content, type, checklist, completed, created_at')
-    .eq('user_id', user!.id)
-    .eq('day_number', dayNumber)
-    .order('created_at', { ascending: true })
+  const nextDay: { day_number: number; week_number: number } | null = programDay
+    ? await getProgramDay(programDay.program_id, dayNumber + 1, supabase).then(n => n ? { day_number: n.day_number, week_number: n.week_number } : null)
+    : (() => { const n = DAYS.find(d => d.number === dayNumber + 1); return n ? { day_number: n.number, week_number: n.week } : null })()
 
   const hasPrev = dayNumber > 1
   const hasNext = dayNumber < totalDays && dayNumber < currentDay
@@ -147,7 +132,6 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
       />
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-        {/* Day header */}
         <div style={{ marginBottom: 18 }}>
           <div style={{
             fontSize: 10, fontWeight: 600, letterSpacing: '.1em',
@@ -158,10 +142,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
           <div style={{ fontSize: 20, fontWeight: 500, marginBottom: 4 }}>
             {dayDef.name}
           </div>
-          <div style={{
-            fontSize: 13, color: 'var(--text2)',
-            lineHeight: 1.65, maxWidth: 520,
-          }}>
+          <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.65, maxWidth: 520 }}>
             {dayDef.description}
           </div>
         </div>
@@ -174,7 +155,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
           totalDays={totalDays}
           enrollmentId={enrollmentId}
           nextDay={nextDay}
-          weekThemes={weekThemes}
+          weekThemes={WEEK_THEMES}
         />
 
         <DayNotes notes={dayNotes ?? []} />

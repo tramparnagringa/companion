@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { ensureEnrollment } from '@/lib/programs'
+import { ensureEnrollment, getProgramDay } from '@/lib/programs'
 import { DayPageContent } from '@/components/today/day-page-content'
 
 interface Props {
@@ -21,11 +21,16 @@ export default async function DayPage({ params }: Props) {
 
   if (dayNumber > totalDays) notFound()
 
+  const programDay = enrollment
+    ? await getProgramDay(enrollment.program_id, dayNumber, supabase)
+    : null
+
   return (
     <DayPageContent
       dayNumber={dayNumber}
       totalDays={totalDays}
       enrollmentId={enrollment?.id}
+      programDay={programDay}
     />
   )
 }

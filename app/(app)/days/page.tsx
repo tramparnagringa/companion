@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
-import { getCurrentDay } from '@/lib/days'
+import { WEEK_THEMES, getCurrentDay } from '@/lib/days'
 import { ensureEnrollment, getProgramDays } from '@/lib/programs'
 
 function getDayTags(cards: { type: string }[]): string[] {
@@ -19,31 +19,31 @@ export default async function DaysPage() {
 
   const enrollment = await ensureEnrollment(user!.id, supabase)
   const totalDays = enrollment?.program.total_days ?? 30
-  const weekThemes: Record<number, string> = enrollment?.program.week_themes
-    ? Object.fromEntries(
-        Object.entries(enrollment.program.week_themes as Record<string, string>).map(([k, v]) => [Number(k), v])
-      )
-    : { 1: 'Semana 1 — Clareza', 2: 'Semana 2 — Construção', 3: 'Semana 3 — Escalar', 4: 'Semana 4 — Performar' }
-
-  const programDays = enrollment
-    ? await getProgramDays(enrollment.program_id, supabase)
-    : []
-
-  const numWeeks = programDays.length > 0
-    ? Math.max(...programDays.map(d => d.week_number))
-    : 4
 
   const [
+    programDays,
     { data: activities },
     { count: totalApplied },
     { count: responded },
     { count: keywordCount },
   ] = await Promise.all([
+    enrollment ? getProgramDays(enrollment.program_id, supabase) : Promise.resolve([]),
     supabase.from('day_activities').select('day_number, status').eq('user_id', user!.id),
     supabase.from('jobs').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).not('applied_at', 'is', null),
     supabase.from('jobs').select('*', { count: 'exact', head: true }).eq('user_id', user!.id).in('status', ['interviewing', 'offer']),
     supabase.from('keywords').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
   ])
+
+  // Use program-specific week themes when available, fall back to bootcamp defaults
+  const weekThemes: Record<number, string> = enrollment?.program.week_themes
+    ? Object.fromEntries(
+        Object.entries(enrollment.program.week_themes as Record<string, string>).map(([k, v]) => [Number(k), v])
+      )
+    : WEEK_THEMES
+
+  const numWeeks = programDays.length > 0
+    ? Math.max(...programDays.map(d => d.week_number))
+    : 4
 
   const allActivities = activities ?? []
   const completedDayNumbers = allActivities

@@ -3,6 +3,15 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { ensureEnrollment } from '@/lib/programs'
 
+async function resolveEnrollmentId(
+  userId: string,
+  enrollmentId: string | undefined,
+  supabase: Awaited<ReturnType<typeof createServerClient>>
+): Promise<string | null> {
+  if (enrollmentId) return enrollmentId
+  return (await ensureEnrollment(userId, supabase))?.id ?? null
+}
+
 /**
  * Persists a single card state key for a day.
  * key format: "card_{cardIndex}_read" | "card_{cardIndex}_check_{itemIndex}"
@@ -18,30 +27,19 @@ export async function saveCardState(
   if (!user) return
 
   // Resolve enrollmentId if not provided
-  const resolvedEnrollmentId = enrollmentId
-    ?? (await ensureEnrollment(user.id, supabase))?.id
-    ?? null
+  const resolvedEnrollmentId = await resolveEnrollmentId(user.id, enrollmentId, supabase)
 
   // Fetch or create the day_activity row
   let existing: { id: string; checklist: unknown; status: string } | null = null
 
-  if (resolvedEnrollmentId) {
-    const { data } = await supabase
-      .from('day_activities')
-      .select('id, checklist, status')
-      .eq('program_enrollment_id', resolvedEnrollmentId)
-      .eq('day_number', dayNumber)
-      .single()
-    existing = data
-  } else {
-    const { data } = await supabase
-      .from('day_activities')
-      .select('id, checklist, status')
-      .eq('user_id', user.id)
-      .eq('day_number', dayNumber)
-      .single()
-    existing = data
-  }
+  // Always look up by user_id + day_number to avoid duplicate rows
+  const { data } = await supabase
+    .from('day_activities')
+    .select('id, checklist, status')
+    .eq('user_id', user.id)
+    .eq('day_number', dayNumber)
+    .maybeSingle()
+  existing = data
 
   const currentChecklist: Record<string, boolean> =
     (existing?.checklist as Record<string, boolean>) ?? {}
@@ -81,30 +79,35 @@ export async function completeDayActivity(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  const resolvedEnrollmentId = enrollmentId
-    ?? (await ensureEnrollment(user.id, supabase))?.id
-    ?? null
+  const resolvedEnrollmentId = await resolveEnrollmentId(user.id, enrollmentId, supabase)
 
-  if (resolvedEnrollmentId) {
+  const { data: existing } = await supabase
+    .from('day_activities')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('day_number', dayNumber)
+    .maybeSingle()
+
+  if (existing) {
     await supabase
       .from('day_activities')
-      .upsert({
+      .update({
+        status: 'done',
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...(resolvedEnrollmentId ? { program_enrollment_id: resolvedEnrollmentId } : {}),
+      })
+      .eq('id', existing.id)
+  } else {
+    await supabase
+      .from('day_activities')
+      .insert({
         user_id: user.id,
         day_number: dayNumber,
         program_enrollment_id: resolvedEnrollmentId,
         status: 'done',
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'program_enrollment_id,day_number' })
-  } else {
-    await supabase
-      .from('day_activities')
-      .upsert({
-        user_id: user.id,
-        day_number: dayNumber,
-        status: 'done',
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,day_number' })
+      })
   }
 }
