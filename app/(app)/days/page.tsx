@@ -13,10 +13,9 @@ function getDayTags(cards: { type: string }[]): string[] {
   return tags
 }
 
-export default async function DaysPage() {
-  const supabase = await createServerClient()
+export default async function DaysRedirect() {
+  const supabase   = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   const enrollment = await ensureEnrollment(user!.id, supabase)
   const totalDays = enrollment?.program.total_days ?? 30
 
@@ -114,7 +113,7 @@ export default async function DaysPage() {
                   const isDone    = status === 'done'
                   const isCurrent = day === currentDay
                   const isLocked  = day > currentDay
-                  const tags      = getDayTags(dayDef.cards)
+                  const tags      = getDayTags(dayDef.cards as { type: string }[])
 
                   const cardContent = (
                     <div style={{ padding: '11px 13px', display: 'flex', alignItems: 'center', gap: 10 }}>

@@ -3,19 +3,15 @@ import { createServerClient } from '@/lib/supabase/server'
 import { ensureEnrollment, getProgramDay } from '@/lib/programs'
 import { DayPageContent } from '@/components/today/day-page-content'
 
-interface Props {
+export default async function DayRedirect({
+  params,
+}: {
   params: Promise<{ day: string }>
-}
-
-export default async function DayPage({ params }: Props) {
-  const { day: dayParam } = await params
-  const dayNumber = parseInt(dayParam, 10)
-
-  if (isNaN(dayNumber) || dayNumber < 1) notFound()
-
-  const supabase = await createServerClient()
+}) {
+  const { day } = await params
+  const dayNumber = parseInt(day, 10)
+  const supabase   = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
-
   const enrollment = await ensureEnrollment(user!.id, supabase)
   const totalDays = enrollment?.program.total_days ?? 30
 

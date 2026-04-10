@@ -46,6 +46,61 @@ type Supabase = SupabaseClient<Database>
 const DEFAULT_PROGRAM_SLUG = 'tng-bootcamp'
 
 /**
+ * Returns the active enrollment matching a program slug, or null.
+ */
+export async function getEnrollmentBySlug(
+  userId: string,
+  slug: string,
+  supabase: Supabase
+): Promise<UserEnrollment | null> {
+  // Resolve program id first, then look up the enrollment
+  const { data: program } = await supabase
+    .from('programs')
+    .select('id')
+    .eq('slug', slug)
+    .maybeSingle()
+
+  if (!program) return null
+
+  const { data, error } = await supabase
+    .from('user_programs')
+    .select('*, program:programs(*)')
+    .eq('user_id', userId)
+    .eq('program_id', program.id)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  if (error) {
+    console.error('[programs] getEnrollmentBySlug error:', error)
+    return null
+  }
+
+  return data as UserEnrollment | null
+}
+
+/**
+ * Returns all active enrollments for a user, ordered by started_at.
+ */
+export async function getAllEnrollments(
+  userId: string,
+  supabase: Supabase
+): Promise<UserEnrollment[]> {
+  const { data, error } = await supabase
+    .from('user_programs')
+    .select('*, program:programs(*)')
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .order('started_at', { ascending: true })
+
+  if (error) {
+    console.error('[programs] getAllEnrollments error:', error)
+    return []
+  }
+
+  return (data ?? []) as unknown as UserEnrollment[]
+}
+
+/**
  * Returns the active enrollment for a user, or null if none exists.
  */
 export async function getActiveEnrollment(

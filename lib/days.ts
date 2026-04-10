@@ -1242,11 +1242,8 @@ export function isCardComplete(
   cardIndex: number,
   savedState: Record<string, boolean>,
 ): boolean {
-  if (card.type === 'ai') return savedState[`card_${cardIndex}_executed`] === true
+  if (card.type === 'ai' || card.type === 'action') return savedState[`card_${cardIndex}_executed`] === true
   if (card.type === 'learn' || card.type === 'reflect') return savedState[`card_${cardIndex}_read`] === true
-  if (card.checklist && card.checklist.length > 0) {
-    return card.checklist.every((_, i) => savedState[`card_${cardIndex}_check_${i}`] === true)
-  }
   return false
 }
 

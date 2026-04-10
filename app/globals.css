@@ -233,3 +233,106 @@ html, body {
 .plan-markdown tr:nth-child(even) td {
   background: var(--bg3);
 }
+
+/* ── Mentor ─────────────────────────────────────────────────── */
+.mentor-student-row:hover {
+  background: var(--bg3);
+}
+
+@media (max-width: 768px) {
+  /* ── Hide context rail ── */
+  .context-rail {
+    display: none !important;
+  }
+
+  /* ── Hide streak badge ── */
+  .topbar-streak {
+    display: none !important;
+  }
+
+  /* ── Mentor: stack navigation (list → chat) ── */
+  .mentor-workspace {
+    display: block !important;
+  }
+
+  /* Left panels fill screen by default */
+  .mentor-panels-left {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100dvw !important;
+    min-width: unset !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Student list fills the panel */
+  .mentor-panel-students {
+    width: 100% !important;
+    min-width: unset !important;
+    flex: 1 !important;
+  }
+
+  /* Dossier hidden on mobile */
+  .mentor-panel-dossier {
+    display: none !important;
+  }
+
+  /* Chat hidden until student selected */
+  .mentor-panel-chat {
+    display: none !important;
+  }
+
+  /* When student selected: hide list, show chat full screen */
+  .mentor-has-selection .mentor-panels-left {
+    display: none !important;
+  }
+
+  .mentor-has-selection .mentor-panel-chat {
+    display: flex !important;
+    position: fixed !important;
+    inset: 0 !important;
+  }
+
+  /* Back button — visible only on mobile */
+  .mentor-mobile-back {
+    display: flex !important;
+  }
+
+  /* Sub-page topbar */
+  .mentor-sub-topbar {
+    display: flex !important;
+  }
+
+  /* Students table: swap grid→cards */
+  .students-table-desktop {
+    display: none !important;
+  }
+  .students-table-mobile {
+    display: block !important;
+  }
+
+  /* Reduce heavy desktop padding on sub-pages */
+  .mentor-sub-page {
+    padding: 16px !important;
+  }
+
+  /* ── Admin sidebar: drawer ── */
+  .admin-sidebar-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 0.22s ease;
+    z-index: 51;
+  }
+
+  .admin-sidebar-nav.sidebar-open {
+    transform: translateX(0);
+  }
+
+  /* Admin mobile topbar */
+  .admin-mobile-topbar {
+    display: flex !important;
+  }
+}

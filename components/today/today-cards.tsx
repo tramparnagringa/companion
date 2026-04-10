@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useTransition, useCallback } from 'react'
+import { useState, useTransition, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { DayCard } from './day-card'
 import { completeDayActivity } from '@/app/actions/day-activity'
 import { isCardComplete } from '@/lib/days'
@@ -16,28 +17,45 @@ interface TodayCardsProps {
   enrollmentId?: string
   nextDay?: { day_number: number; week_number: number } | null
   weekThemes?: Record<string, string>
+  slug?: string
 }
 
-export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, totalDays = 30, enrollmentId, nextDay, weekThemes = {} }: TodayCardsProps) {
+export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, totalDays = 30, enrollmentId, nextDay, weekThemes = {}, slug }: TodayCardsProps) {
   const [cardComplete, setCardComplete] = useState<Record<number, boolean>>(() =>
     Object.fromEntries(dayDef.cards.map((card, i) => [i, isCardComplete(card, i, savedState)]))
   )
   const [dayDone, setDayDone] = useState(alreadyCompleted)
   const [, startTransition] = useTransition()
+  const router = useRouter()
+
+  // Auto-heal: if all cards are already done in savedState but day isn't marked complete, fix it
+  useEffect(() => {
+    const initialAllDone = dayDef.cards.every((card, i) => isCardComplete(card, i, savedState))
+    if (initialAllDone && !alreadyCompleted && enrollmentId) {
+      setDayDone(true)
+      startTransition(async () => {
+        await completeDayActivity(dayNumber, enrollmentId)
+        router.refresh()
+      })
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleCardComplete = useCallback((cardIndex: number, complete: boolean) => {
-    setCardComplete(prev => {
-      const next = { ...prev, [cardIndex]: complete }
-      const allDone = dayDef.cards.every((_, i) => next[i])
-      if (allDone && !dayDone) {
-        setDayDone(true)
-        startTransition(() => { completeDayActivity(dayNumber, enrollmentId) })
-      }
-      return next
-    })
-  }, [dayDef.cards, dayDone, dayNumber, enrollmentId])
+    setCardComplete(prev => ({ ...prev, [cardIndex]: complete }))
+  }, [])
 
   const allDone = dayDef.cards.every((_, i) => cardComplete[i])
+
+  // Mark day complete when all cards are done
+  useEffect(() => {
+    if (allDone && !dayDone && enrollmentId) {
+      setDayDone(true)
+      startTransition(async () => {
+        await completeDayActivity(dayNumber, enrollmentId)
+        router.refresh()
+      })
+    }
+  }, [allDone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const isWeekEnd = nextDay ? nextDay.week_number !== dayDef.week : false
   const currentWeekTheme = weekThemes[dayDef.week]
@@ -56,6 +74,7 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, to
             savedState={savedState}
             defaultOpen={i === 0 && !alreadyCompleted}
             onComplete={handleCardComplete}
+            slug={slug}
           />
         ))}
       </div>
@@ -87,7 +106,7 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, to
             </div>
           </div>
           {dayNumber < totalDays && (
-            <Link href={`/days/${dayNumber + 1}`} style={{
+            <Link href={slug ? `/${slug}/days/${dayNumber + 1}` : `/days/${dayNumber + 1}`} style={{
               fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
               padding: '7px 13px', borderRadius: 'var(--rsm)',
               background: 'var(--green-dim)', color: 'var(--green)',
@@ -131,7 +150,7 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, to
                 Retro feita. Você completou mais uma semana do bootcamp — isso é execução real.
                 {nextWeekTheme && ` Pronto para a ${nextWeekTheme.split('—')[1]?.trim()}?`}
               </div>
-              <Link href={`/days/${nextDay.day_number}`} style={{
+              <Link href={slug ? `/${slug}/days/${nextDay.day_number}` : `/days/${nextDay.day_number}`} style={{
                 fontSize: 13, fontWeight: 500,
                 padding: '8px 16px', borderRadius: 'var(--rsm)',
                 background: 'var(--accent)', color: 'var(--accent-text)',

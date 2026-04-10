@@ -13,12 +13,13 @@ interface Message {
 interface ChatWindowProps {
   initialPrompt?: string
   dayNumber?: number
+  slug?: string
   loadSessionId?: string | null
   onSessionCreated?: (sessionId: string) => void
 }
 
-export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionCreated }: ChatWindowProps) {
-  const [mode, setMode]           = useState<'task' | 'mentor'>('task')
+export function ChatWindow({ initialPrompt, dayNumber, slug, loadSessionId, onSessionCreated }: ChatWindowProps) {
+  const mode = 'task' as const
   const [messages, setMessages]   = useState<Message[]>([])
   const [input, setInput]         = useState('')
   const [loading, setLoading]     = useState(false)
@@ -49,7 +50,6 @@ export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionC
       .then(({ session }) => {
         if (session) {
           setSessionId(session.id)
-          setMode(session.mode ?? 'task')
           setMessages(Array.isArray(session.messages) ? session.messages : [])
         }
       })
@@ -107,6 +107,7 @@ export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionC
             .filter(m => m.content.trim() !== ''),
           mode,
           dayNumber,
+          slug,
           sessionId: currentSessionId,
         }),
       })
@@ -177,25 +178,6 @@ export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionC
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Mode toggle */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        {(['task', 'mentor'] as const).map(m => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            style={{
-              padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'var(--font)', transition: 'all .15s',
-              background: mode === m ? 'var(--accent-dim)' : 'none',
-              color: mode === m ? 'var(--accent)' : 'var(--text2)',
-              border: mode === m ? '0.5px solid rgba(228,253,139,.25)' : '0.5px solid var(--border2)',
-            }}
-          >
-            {m === 'task' ? 'Assistente' : 'Mentor'}
-          </button>
-        ))}
-      </div>
-
       {/* Context bar */}
       <div style={{
         background: 'var(--bg2)', border: '0.5px solid var(--border)',
@@ -224,23 +206,12 @@ export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionC
       }}>
         {messages.length === 0 && (
           <div style={{ fontSize: 13, color: 'var(--text3)', textAlign: 'center', marginTop: 40 }}>
-            {mode === 'mentor'
-              ? 'Olá! Sou seu mentor. Como posso ajudar hoje?'
-              : 'Comece colando uma vaga ou fazendo uma pergunta sobre sua busca.'}
+            {'Comece colando uma vaga ou fazendo uma pergunta sobre sua busca.'}
           </div>
         )}
 
         {messages.map((msg, i) => (
           <div key={i} style={{ maxWidth: '88%', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-            {msg.role === 'assistant' && mode === 'mentor' && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10,
-                background: 'var(--teal-dim)', color: 'var(--teal)',
-                padding: '2px 7px', borderRadius: 8, marginBottom: 6,
-              }}>
-                ✦ Mentor
-              </div>
-            )}
 
             {msg.toolCalls && msg.toolCalls.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
@@ -321,7 +292,7 @@ export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionC
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          placeholder={mode === 'mentor' ? 'Fale com seu mentor...' : 'Cole uma vaga ou faça uma pergunta...'}
+          placeholder="Cole uma vaga ou faça uma pergunta..."
           rows={1}
           style={{
             flex: 1, minHeight: 38, maxHeight: 100, padding: '9px 13px',

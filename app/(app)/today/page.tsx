@@ -1,37 +1,22 @@
 import { createServerClient } from '@/lib/supabase/server'
-import { getCurrentDay } from '@/lib/days'
-import { ensureEnrollment, getProgramDay } from '@/lib/programs'
-import { DayPageContent } from '@/components/today/day-page-content'
+import { getAllEnrollments, ensureEnrollment } from '@/lib/programs'
+import { TodayRedirectClient } from './redirect-client'
 
-export default async function TodayPage() {
-  const supabase = await createServerClient()
+export default async function TodayRedirect() {
+  const supabase    = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
+  const enrollments = await getAllEnrollments(user!.id, supabase)
 
-  const enrollment = await ensureEnrollment(user!.id, supabase)
-  const totalDays = enrollment?.program.total_days ?? 30
-
-  const { data: activities } = await supabase
-    .from('day_activities')
-    .select('day_number, status')
-    .eq('user_id', user!.id)
-
-  const completedDayNumbers = (activities ?? [])
-    .filter(a => a.status === 'done')
-    .map(a => a.day_number)
-
-  const currentDay = getCurrentDay(completedDayNumbers, totalDays)
-
-  const programDay = enrollment
-    ? await getProgramDay(enrollment.program_id, currentDay, supabase)
-    : null
-
-  return (
-    <DayPageContent
-      dayNumber={currentDay}
-      isToday
-      totalDays={totalDays}
-      enrollmentId={enrollment?.id}
-      programDay={programDay}
+  if (enrollments.length === 0) {
+    const e = await ensureEnrollment(user!.id, supabase)
+    return <TodayRedirectClient
+      defaultSlug={e?.program.slug ?? 'tng-bootcamp'}
+      slugs={e ? [e.program.slug] : []}
     />
-  )
+  }
+
+  return <TodayRedirectClient
+    defaultSlug={enrollments[0].program.slug}
+    slugs={enrollments.map(e => e.program.slug)}
+  />
 }

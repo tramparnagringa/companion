@@ -43,7 +43,7 @@ export function Topbar({ title, subtitle, streak, actions }: TopbarProps) {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         {streak !== undefined && streak > 0 && (
-          <div style={{
+          <div className="topbar-streak" style={{
             display: 'flex', alignItems: 'center', gap: 5,
             padding: '4px 10px', borderRadius: 20,
             background: 'var(--bg3)', border: '0.5px solid var(--border2)',
