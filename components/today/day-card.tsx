@@ -190,7 +190,7 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
                     onChange={() => toggleCheck(i)}
                     style={{ marginTop: 2, accentColor: 'var(--accent)', flexShrink: 0 }}
                   />
-                  {item}
+                  {item.label}
                 </label>
               ))}
             </div>
