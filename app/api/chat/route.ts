@@ -5,7 +5,7 @@ import { buildSystemPrompt, getDayModelConfig } from '@/lib/anthropic/system-pro
 import { ALL_TOOLS } from '@/lib/anthropic/tools'
 import { executeToolCall } from '@/lib/anthropic/tool-executor'
 import { TOKEN_COSTS } from '@/lib/tokens'
-import { getDayForUser } from '@/lib/programs'
+import { getDayForUser, getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
 
 export async function POST(req: Request) {
   let supabase: Awaited<ReturnType<typeof createServerClient>>
@@ -14,6 +14,7 @@ export async function POST(req: Request) {
   let mode: 'task' | 'mentor'
   let dayNumber: number | undefined
   let sessionId: string | undefined
+  let slug: string | undefined
 
   try {
     supabase = await createServerClient()
@@ -25,6 +26,7 @@ export async function POST(req: Request) {
     messages  = body.messages
     mode      = body.mode === 'mentor' ? 'mentor' : 'task'
     dayNumber = body.dayNumber
+    slug      = body.slug as string | undefined
     sessionId = body.sessionId as string | undefined
 
     const cost = mode === 'mentor' ? TOKEN_COSTS.mentor_message : TOKEN_COSTS.chat_message
@@ -40,7 +42,9 @@ export async function POST(req: Request) {
   const [{ data: candidateProfile }, programDay] = await Promise.all([
     supabase!.from('candidate_profiles').select('*').eq('user_id', userId!).single(),
     mode === 'task' && dayNumber
-      ? getDayForUser(userId!, dayNumber, supabase!)
+      ? (slug
+          ? getEnrollmentBySlug(userId!, slug, supabase!).then(e => e ? getProgramDay(e.program_id, dayNumber, supabase!) : null)
+          : getDayForUser(userId!, dayNumber, supabase!))
       : Promise.resolve(null),
   ])
 

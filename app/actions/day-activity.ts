@@ -1,7 +1,6 @@
 'use server'
 
 import { createServerClient } from '@/lib/supabase/server'
-import { ensureEnrollment } from '@/lib/programs'
 
 /**
  * Persists a single card state key for a day.
@@ -17,27 +16,16 @@ export async function saveCardState(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  // Resolve enrollmentId if not provided
-  const resolvedEnrollmentId = enrollmentId
-    ?? (await ensureEnrollment(user.id, supabase))?.id
-    ?? null
+  if (!enrollmentId) return  // enrollmentId is always required; skip silently if missing
 
   // Fetch or create the day_activity row
   let existing: { id: string; checklist: unknown; status: string } | null = null
 
-  if (resolvedEnrollmentId) {
+  {
     const { data } = await supabase
       .from('day_activities')
       .select('id, checklist, status')
-      .eq('program_enrollment_id', resolvedEnrollmentId)
-      .eq('day_number', dayNumber)
-      .single()
-    existing = data
-  } else {
-    const { data } = await supabase
-      .from('day_activities')
-      .select('id, checklist, status')
-      .eq('user_id', user.id)
+      .eq('program_enrollment_id', enrollmentId)
       .eq('day_number', dayNumber)
       .single()
     existing = data
@@ -63,7 +51,7 @@ export async function saveCardState(
       .insert({
         user_id: user.id,
         day_number: dayNumber,
-        program_enrollment_id: resolvedEnrollmentId,
+        program_enrollment_id: enrollmentId,
         checklist: updatedChecklist,
         status: 'in_progress',
       })
@@ -77,34 +65,38 @@ export async function completeDayActivity(
   dayNumber: number,
   enrollmentId?: string,
 ): Promise<void> {
+  if (!enrollmentId) return  // enrollmentId is always required
+
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return
 
-  const resolvedEnrollmentId = enrollmentId
-    ?? (await ensureEnrollment(user.id, supabase))?.id
-    ?? null
+  // Fetch existing row (partial unique index can't be used in upsert onConflict)
+  const { data: existing } = await supabase
+    .from('day_activities')
+    .select('id')
+    .eq('program_enrollment_id', enrollmentId)
+    .eq('day_number', dayNumber)
+    .single()
 
-  if (resolvedEnrollmentId) {
+  if (existing) {
     await supabase
       .from('day_activities')
-      .upsert({
-        user_id: user.id,
-        day_number: dayNumber,
-        program_enrollment_id: resolvedEnrollmentId,
+      .update({
         status: 'done',
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'program_enrollment_id,day_number' })
+      })
+      .eq('id', existing.id)
   } else {
     await supabase
       .from('day_activities')
-      .upsert({
+      .insert({
         user_id: user.id,
         day_number: dayNumber,
+        program_enrollment_id: enrollmentId,
         status: 'done',
         completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,day_number' })
+      })
   }
 }

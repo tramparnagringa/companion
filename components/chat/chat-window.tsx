@@ -13,12 +13,13 @@ interface Message {
 interface ChatWindowProps {
   initialPrompt?: string
   dayNumber?: number
+  slug?: string
   loadSessionId?: string | null
   onSessionCreated?: (sessionId: string) => void
 }
 
-export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionCreated }: ChatWindowProps) {
-  const [mode, setMode]           = useState<'task' | 'mentor'>('task')
+export function ChatWindow({ initialPrompt, dayNumber, slug, loadSessionId, onSessionCreated }: ChatWindowProps) {
+  const mode = 'task' as const
   const [messages, setMessages]   = useState<Message[]>([])
   const [input, setInput]         = useState('')
   const [loading, setLoading]     = useState(false)
@@ -49,7 +50,6 @@ export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionC
       .then(({ session }) => {
         if (session) {
           setSessionId(session.id)
-          setMode(session.mode ?? 'task')
           setMessages(Array.isArray(session.messages) ? session.messages : [])
         }
       })
@@ -107,6 +107,7 @@ export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionC
             .filter(m => m.content.trim() !== ''),
           mode,
           dayNumber,
+          slug,
           sessionId: currentSessionId,
         }),
       })
@@ -177,25 +178,6 @@ export function ChatWindow({ initialPrompt, dayNumber, loadSessionId, onSessionC
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Mode toggle */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-        {(['task', 'mentor'] as const).map(m => (
-          <button
-            key={m}
-            onClick={() => setMode(m)}
-            style={{
-              padding: '6px 14px', borderRadius: 20, fontSize: 12, fontWeight: 500,
-              cursor: 'pointer', fontFamily: 'var(--font)', transition: 'all .15s',
-              background: mode === m ? 'var(--accent-dim)' : 'none',
-              color: mode === m ? 'var(--accent)' : 'var(--text2)',
-              border: mode === m ? '0.5px solid rgba(228,253,139,.25)' : '0.5px solid var(--border2)',
-            }}
-          >
-            {m === 'task' ? 'Assistente' : 'Mentor'}
-          </button>
-        ))}
-      </div>
-
       {/* Context bar */}
       <div style={{
         background: 'var(--bg2)', border: '0.5px solid var(--border)',

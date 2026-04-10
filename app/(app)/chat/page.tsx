@@ -19,6 +19,7 @@ export default function ChatPage() {
   const initialPrompt = searchParams.get('prompt') ?? undefined
   const dayParam      = searchParams.get('day')
   const dayNumber     = dayParam ? parseInt(dayParam, 10) : undefined
+  const slug          = searchParams.get('slug') ?? undefined
 
   // chatKey controls ChatWindow remount (only on explicit session switch / new chat)
   const [chatKey, setChatKey]             = useState('new')
@@ -57,7 +58,7 @@ export default function ChatPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Topbar title="Chat + Mentor" subtitle="Conversa livre com IA" />
+      <Topbar title="Mentor IA" subtitle="Conversa livre com IA" />
       <div style={{ flex: 1, overflow: 'hidden', display: 'flex' }}>
         <SessionsPanel
           isOpen={isPanelOpen}
@@ -90,9 +91,9 @@ export default function ChatPage() {
             >
               ☰
             </button>
-            {dayNumber && (
+            {dayNumber && slug && (
               <a
-                href="/today"
+                href={`/${slug}/days/${dayNumber}`}
                 style={{
                   fontSize: 11, fontWeight: 500, color: 'var(--text3)',
                   display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -113,6 +114,7 @@ export default function ChatPage() {
             key={chatKey}
             initialPrompt={sessionToLoad ? undefined : initialPrompt}
             dayNumber={dayNumber}
+            slug={slug}
             loadSessionId={sessionToLoad}
             onSessionCreated={handleSessionCreated}
           />

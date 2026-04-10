@@ -11,6 +11,7 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
   const isAuthRoute    = path.startsWith('/login') || path.startsWith('/pending')
   const isMentorRoute  = path.startsWith('/mentor')
+  const isAdminRoute   = path.startsWith('/admin')
   const isApiWebhook   = path.startsWith('/api/webhooks')
   const isSignout      = path.startsWith('/auth/signout')
   const isCallback     = path.startsWith('/auth/callback')
@@ -56,6 +57,11 @@ export async function middleware(request: NextRequest) {
 
     // Guard mentor routes
     if (isMentorRoute && !['mentor', 'admin'].includes(role)) {
+      return NextResponse.redirect(new URL('/today', request.url))
+    }
+
+    // Guard admin routes
+    if (isAdminRoute && role !== 'admin') {
       return NextResponse.redirect(new URL('/today', request.url))
     }
   }

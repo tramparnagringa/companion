@@ -1,71 +1,92 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+
+interface Enrollment {
+  id: string
+  slug: string
+  name: string
+  totalDays: number
+}
 
 interface SidebarProps {
   user: User | null
+  role?: string
+  enrollments?: Enrollment[]
   tokenUsed?: number
   tokenTotal?: number
   plan?: string
-  currentDay?: number
-  completedCount?: number
   isOpen?: boolean
   onClose?: () => void
 }
 
 export function Sidebar({
   user,
+  role: _role = 'student',
+  enrollments = [],
   tokenUsed = 0,
   tokenTotal = 2_000_000,
   plan = 'Bootcamp',
-  currentDay = 1,
-  completedCount = 0,
   isOpen = false,
   onClose,
 }: SidebarProps) {
   const pathname = usePathname()
   const router   = useRouter()
-  const supabase = createClient()
 
-  const usedPct = tokenTotal > 0 ? Math.min((tokenUsed / tokenTotal) * 100, 100) : 0
-  const viewingDayMatch = pathname.match(/^\/days\/(\d+)$/)
-  const viewingDay = viewingDayMatch ? parseInt(viewingDayMatch[1], 10) : null
-  const fillClass = usedPct > 90 ? 'danger' : usedPct > 70 ? 'warn' : ''
+  const STORAGE_KEY = 'tng_active_slug'
 
-  const initials    = user?.email?.slice(0, 2).toUpperCase() ?? 'TN'
+  const firstSegment = pathname.split('/')[1] ?? ''
+  const slugFromUrl  = enrollments.find(e => e.slug === firstSegment)?.slug ?? null
+
+  const [storedSlug, setStoredSlug] = useState<string | null>(null)
+
+  // On mount: read localStorage. If URL has a slug, it wins and we persist it.
+  useEffect(() => {
+    if (slugFromUrl) {
+      localStorage.setItem(STORAGE_KEY, slugFromUrl)
+      setStoredSlug(slugFromUrl)
+    } else {
+      setStoredSlug(localStorage.getItem(STORAGE_KEY))
+    }
+  }, [slugFromUrl])
+
+  const resolvedSlug     = slugFromUrl ?? storedSlug ?? enrollments[0]?.slug ?? null
+  const activeEnrollment = enrollments.find(e => e.slug === resolvedSlug) ?? enrollments[0] ?? null
+  const activeSlug       = activeEnrollment?.slug ?? null
+
+  const usedPct    = tokenTotal > 0 ? Math.min((tokenUsed / tokenTotal) * 100, 100) : 0
+  const fillClass  = usedPct > 90 ? 'danger' : usedPct > 70 ? 'warn' : ''
+  const initials   = user?.email?.slice(0, 2).toUpperCase() ?? 'TN'
   const displayName = user?.user_metadata?.full_name ?? user?.email ?? 'Usuário'
 
-  async function signOut() {
-    await supabase.auth.signOut()
-    router.push('/login')
-  }
+  // Sub-page within a program (e.g. viewing day 5)
+  const viewingDayMatch = pathname.match(/^\/[^/]+\/days\/(\d+)$/)
+  const viewingDay      = viewingDayMatch ? parseInt(viewingDayMatch[1], 10) : null
 
-  type NavItem = {
-    id: string
-    label: string
-    href: string
-    badge?: string
-    icon: React.ReactNode
-  }
+
+
+  type NavItem = { id: string; label: string; href: string; badge?: string; icon: React.ReactNode }
+
+  const slug = activeEnrollment?.slug ?? 'tng-bootcamp'
 
   const NAV_SECTIONS: { section: string; items: NavItem[] }[] = [
     {
       section: 'Jornada',
       items: [
         {
-          id: 'today', label: 'Hoje', href: '/today',
-          badge: `Dia ${currentDay}`,
+          id: 'today', label: 'Hoje', href: `/${slug}/today`,
+          badge: undefined,
           icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="12" height="12" rx="2" /><line x1="5" y1="6" x2="11" y2="6" /><line x1="5" y1="9" x2="8" y2="9" /></svg>,
         },
         {
-          id: 'days', label: 'Programa', href: '/days',
-          badge: `${completedCount}/30`,
+          id: 'days', label: 'Programa', href: `/${slug}/days`,
+          badge: undefined,
           icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="5" height="5" rx="1" /><rect x="9" y="2" width="5" height="5" rx="1" /><rect x="2" y="9" width="5" height="5" rx="1" /><rect x="9" y="9" width="5" height="5" rx="1" /></svg>,
         },
         {
-          id: 'plans', label: 'Planos de Ação', href: '/plans',
+          id: 'plans', label: 'Planos de Ação', href: `/${slug}/plans`,
           badge: undefined,
           icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="12" height="12" rx="1.5" /><polyline points="5,8 7,10 11,6" /></svg>,
         },
@@ -136,28 +157,49 @@ export function Sidebar({
           )}
         </div>
 
-        {/* User pill */}
-        <button
-          onClick={signOut}
-          style={{
-            display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px',
-            borderRadius: 'var(--rsm)', background: 'var(--bg3)', cursor: 'pointer',
-            border: 'none', width: '100%', textAlign: 'left',
-          }}
-          title="Clique para sair"
-        >
-          <div style={{
-            width: 24, height: 24, borderRadius: '50%', background: 'var(--accent-dim)',
-            border: '1px solid rgba(228,253,139,.3)', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: 10, fontWeight: 600, color: 'var(--accent)', flexShrink: 0,
-          }}>
-            {initials}
+        {/* Program switcher — visible when enrolled in more than one program */}
+        {enrollments.length > 1 && (
+          <div style={{ marginTop: 10 }}>
+            <div style={{
+              fontSize: 10, fontWeight: 500, letterSpacing: '.08em',
+              textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 4,
+            }}>
+              Programa
+            </div>
+            <div style={{ position: 'relative' }}>
+              <select
+                value={activeSlug ?? ''}
+                onChange={e => router.push(`/${e.target.value}/today`)}
+                style={{
+                  width: '100%', padding: '7px 28px 7px 10px',
+                  borderRadius: 'var(--rsm)', fontSize: 12, fontWeight: 500,
+                  background: 'var(--accent-dim)',
+                  border: '0.5px solid rgba(228,253,139,.25)',
+                  color: 'var(--accent)', cursor: 'pointer', outline: 'none',
+                  appearance: 'none', WebkitAppearance: 'none',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {enrollments.map(e => (
+                  <option key={e.id} value={e.slug} style={{ background: 'var(--bg3)', color: 'var(--text)' }}>
+                    {e.name}
+                  </option>
+                ))}
+              </select>
+              {/* Chevron */}
+              <svg
+                viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                style={{
+                  width: 11, height: 11, position: 'absolute', right: 8,
+                  top: '50%', transform: 'translateY(-50%)',
+                  color: 'var(--accent)', pointerEvents: 'none',
+                }}
+              >
+                <polyline points="4,6 8,10 12,6" />
+              </svg>
+            </div>
           </div>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{displayName}</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)' }}>{user?.email}</div>
-          </div>
-        </button>
+        )}
       </div>
 
       {/* Nav */}
@@ -172,7 +214,8 @@ export function Sidebar({
               {section}
             </div>
             {items.map(item => {
-              const isActive = pathname === item.href
+              // Active if the pathname starts with the item's href (handles sub-routes)
+              const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
               return (
                 <div key={item.id}>
                   <button
@@ -212,12 +255,12 @@ export function Sidebar({
                     )}
                   </button>
 
+                  {/* Sub-item: currently viewing a specific day */}
                   {item.id === 'days' && viewingDay !== null && (
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 6,
                       padding: '5px 8px 5px 28px', borderRadius: 'var(--rsm)',
-                      fontSize: 12, color: 'var(--accent)',
-                      background: 'var(--accent-dim)',
+                      fontSize: 12, color: 'var(--accent)', background: 'var(--accent-dim)',
                     }}>
                       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 11, height: 11, opacity: 0.5 }}>
                         <polyline points="4,8 8,12 12,8" />
@@ -260,6 +303,7 @@ export function Sidebar({
           <span>{tokenTotal.toLocaleString()}</span>
         </div>
       </div>
+
     </nav>
   )
 }
