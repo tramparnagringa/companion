@@ -97,7 +97,7 @@ export async function getAllEnrollments(
     return []
   }
 
-  return (data ?? []) as UserEnrollment[]
+  return (data ?? []) as unknown as UserEnrollment[]
 }
 
 /**

@@ -13,7 +13,7 @@ function detectPhase(days: any[]): 'outline' | 'week' | 'refine' {
 }
 
 function buildSystemPrompt(program: any, phase: 'outline' | 'week' | 'refine'): string {
-  const days = (program.program_days as any[]).sort((a, b) => a.day_number - b.day_number)
+  const days = (program.program_days as unknown as any[]).sort((a, b) => a.day_number - b.day_number)
 
   const outlineSummary = days.length > 0
     ? days.map((d: any) => `Dia ${d.day_number} (Semana ${d.week_number}): ${d.name}${d.description ? ` — ${d.description}` : ''}`).join('\n')
@@ -163,7 +163,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const { messages } = await req.json() as { messages: Anthropic.MessageParam[] }
 
-  const days = (program.program_days as any[]).sort((a, b) => a.day_number - b.day_number)
+  const days = (program.program_days as unknown as any[]).sort((a, b) => a.day_number - b.day_number)
   const phase = detectPhase(days)
   const systemPrompt = buildSystemPrompt(program, phase)
 

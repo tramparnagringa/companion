@@ -17,9 +17,14 @@ export default async function ProgramDetailPage({
 
   if (!programRes.data) notFound()
 
+  const days = (daysRes.data ?? []).map(d => ({
+    ...d,
+    cards: Array.isArray(d.cards) ? (d.cards as { type: 'learn' | 'ai' | 'action' | 'reflect'; title: string; description: string }[]) : undefined,
+  }))
+
   return (
     <ProgramEditor
-      program={{ ...programRes.data, days: daysRes.data ?? [] }}
+      program={{ ...programRes.data, days }}
     />
   )
 }

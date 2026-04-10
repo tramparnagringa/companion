@@ -206,23 +206,12 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, loadSessionId, onSe
       }}>
         {messages.length === 0 && (
           <div style={{ fontSize: 13, color: 'var(--text3)', textAlign: 'center', marginTop: 40 }}>
-            {mode === 'mentor'
-              ? 'Olá! Sou seu mentor. Como posso ajudar hoje?'
-              : 'Comece colando uma vaga ou fazendo uma pergunta sobre sua busca.'}
+            {'Comece colando uma vaga ou fazendo uma pergunta sobre sua busca.'}
           </div>
         )}
 
         {messages.map((msg, i) => (
           <div key={i} style={{ maxWidth: '88%', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
-            {msg.role === 'assistant' && mode === 'mentor' && (
-              <div style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 10,
-                background: 'var(--teal-dim)', color: 'var(--teal)',
-                padding: '2px 7px', borderRadius: 8, marginBottom: 6,
-              }}>
-                ✦ Mentor
-              </div>
-            )}
 
             {msg.toolCalls && msg.toolCalls.length > 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
@@ -303,7 +292,7 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, loadSessionId, onSe
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          placeholder={mode === 'mentor' ? 'Fale com seu mentor...' : 'Cole uma vaga ou faça uma pergunta...'}
+          placeholder="Cole uma vaga ou faça uma pergunta..."
           rows={1}
           style={{
             flex: 1, minHeight: 38, maxHeight: 100, padding: '9px 13px',

@@ -4,7 +4,7 @@ import { Topbar } from '@/components/layout/topbar'
 import { TodayCards } from '@/components/today/today-cards'
 import { DayNotes } from '@/components/today/day-notes'
 import { DAYS, getCurrentDay, getStreak } from '@/lib/days'
-import type { DayDefinition } from '@/lib/days'
+import type { DayDefinition, CardType } from '@/lib/days'
 import { ensureEnrollment, getProgramDay } from '@/lib/programs'
 import type { ProgramDay } from '@/lib/programs'
 import { notFound } from 'next/navigation'
@@ -63,8 +63,8 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
         week: programDay.week_number,
         name: programDay.name,
         description: programDay.description ?? '',
-        cards: (programDay.cards as { type: string; title: string; description: string }[]).map(c => {
-          const type = (c.type === 'ai' || c.type === 'action' || c.type === 'reflect' || c.type === 'learn') ? c.type : 'ai' as const
+        cards: (programDay.cards as unknown as { type: string; title: string; description: string }[]).map(c => {
+          const type: CardType = (c.type === 'ai' || c.type === 'action' || c.type === 'reflect' || c.type === 'learn') ? c.type : 'ai'
           const base = { type, title: c.title, preview: c.description }
 
           if (type === 'action') {
