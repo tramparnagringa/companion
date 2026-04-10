@@ -27,7 +27,7 @@ export async function saveCardState(
       .select('id, checklist, status')
       .eq('program_enrollment_id', enrollmentId)
       .eq('day_number', dayNumber)
-      .single()
+      .maybeSingle()
     existing = data
   }
 
@@ -77,7 +77,7 @@ export async function completeDayActivity(
     .select('id')
     .eq('program_enrollment_id', enrollmentId)
     .eq('day_number', dayNumber)
-    .single()
+    .maybeSingle()
 
   if (existing) {
     await supabase

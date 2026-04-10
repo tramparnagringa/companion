@@ -16,10 +16,10 @@ interface DayCardProps {
   card: DayCardType
   cardIndex: number
   dayNumber: number
+  enrollmentId?: string
   savedState?: Record<string, boolean>
   defaultOpen?: boolean
   onComplete?: (cardIndex: number, complete: boolean) => void
-  enrollmentId?: string
   slug?: string
 }
 
@@ -170,6 +170,28 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
                     <p key={j} style={{ marginBottom: 8 }}>{para}</p>
                   ))}
                 </div>
+              ))}
+            </div>
+          )}
+
+          {/* Checklist */}
+          {card.checklist && card.checklist.length > 0 && (
+            <div style={{ paddingTop: 12 }}>
+              {card.checklist.map((item, i) => (
+                <label key={i} style={{
+                  display: 'flex', alignItems: 'flex-start', gap: 8,
+                  fontSize: 13, color: checks[i] ? 'var(--text3)' : 'var(--text2)',
+                  marginBottom: 6, cursor: 'pointer',
+                  textDecoration: checks[i] ? 'line-through' : 'none',
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={checks[i] ?? false}
+                    onChange={() => toggleCheck(i)}
+                    style={{ marginTop: 2, accentColor: 'var(--accent)', flexShrink: 0 }}
+                  />
+                  {item}
+                </label>
               ))}
             </div>
           )}

@@ -70,6 +70,7 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, to
             card={card}
             cardIndex={i}
             dayNumber={dayNumber}
+            enrollmentId={enrollmentId}
             savedState={savedState}
             defaultOpen={i === 0 && !alreadyCompleted}
             onComplete={handleCardComplete}
