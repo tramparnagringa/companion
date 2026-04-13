@@ -19,7 +19,7 @@ export async function saveCardState(
   if (!enrollmentId) return  // enrollmentId is always required; skip silently if missing
 
   // Fetch or create the day_activity row
-  let existing: { id: string; checklist: unknown; status: string } | null = null
+  let existing: { id: string; checklist: unknown; status: string | null } | null = null
 
   {
     const { data } = await supabase

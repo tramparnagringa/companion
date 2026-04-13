@@ -1,6 +1,7 @@
 'use server'
 
 import { createServerClient } from '@/lib/supabase/server'
+import type { Json } from '@/types/database'
 
 export type JobStatus =
   | 'to_analyse'
@@ -44,7 +45,7 @@ export async function updateJobStatus(jobId: string, toStatus: JobStatus) {
 
   const { error } = await supabase
     .from('jobs')
-    .update({ status: toStatus, status_log: log, updated_at: new Date().toISOString() })
+    .update({ status: toStatus, status_log: log as unknown as Json, updated_at: new Date().toISOString() })
     .eq('id', jobId)
     .eq('user_id', user.id)
 
@@ -105,7 +106,7 @@ export async function updateJob(jobId: string, fields: {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) throw new Error('Unauthorized')
 
-  let logUpdate: { status_log: StatusLogEntry[] } | undefined
+  let logUpdate: { status_log: Json } | undefined
 
   if (fields.status) {
     const { data: current } = await supabase
@@ -122,7 +123,7 @@ export async function updateJob(jobId: string, fields: {
         at: new Date().toISOString(),
         ...(note ? { note } : {}),
       }
-      logUpdate = { status_log: [...(current.status_log ?? []), entry] }
+      logUpdate = { status_log: [...(current.status_log ?? []), entry] as unknown as Json }
     }
   }
 

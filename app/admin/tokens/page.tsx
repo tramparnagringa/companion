@@ -2,15 +2,14 @@
 
 import { useState } from 'react'
 
-export default function MentorTokensPage() {
-  const [search, setSearch] = useState('')
-  const [userId, setUserId] = useState('')
-  const [tokens, setTokens] = useState('')
-  const [days, setDays] = useState('365')
-  const [reason, setReason] = useState('')
+export default function AdminTokensPage() {
+  const [userId, setUserId]         = useState('')
+  const [tokens, setTokens]         = useState('')
+  const [days, setDays]             = useState('365')
+  const [reason, setReason]         = useState('')
   const [productType, setProductType] = useState('manual_grant')
   const [submitting, setSubmitting] = useState(false)
-  const [message, setMessage] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [message, setMessage]       = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
 
   const inputStyle: React.CSSProperties = {
     width: '100%', padding: '9px 11px', borderRadius: 'var(--rsm)',
@@ -87,7 +86,7 @@ export default function MentorTokensPage() {
                 style={inputStyle}
               />
               <div style={{ fontSize: 11, color: 'var(--text4)', marginTop: 4 }}>
-                Encontre o UUID na página <a href="/mentor/students" style={{ color: 'var(--purple)', textDecoration: 'none' }}>Alunos</a>
+                Encontre o UUID na página <a href="/admin/students" style={{ color: 'var(--orange)', textDecoration: 'none' }}>Alunos</a>
               </div>
             </div>
 
@@ -108,8 +107,8 @@ export default function MentorTokensPage() {
                     style={{
                       padding: '4px 10px', borderRadius: 'var(--rsm)', fontSize: 11,
                       border: '0.5px solid var(--border2)',
-                      background: tokens === p.value ? 'var(--purple-dim)' : 'var(--bg3)',
-                      color: tokens === p.value ? 'var(--purple)' : 'var(--text3)',
+                      background: tokens === p.value ? 'var(--orange-dim)' : 'var(--bg3)',
+                      color: tokens === p.value ? 'var(--orange)' : 'var(--text3)',
                       cursor: 'pointer',
                     }}
                     title={p.note}
@@ -167,9 +166,9 @@ export default function MentorTokensPage() {
               disabled={submitting || !userId || !tokens}
               style={{
                 padding: '10px 20px', borderRadius: 'var(--rsm)',
-                background: submitting || !userId || !tokens ? 'var(--bg4)' : 'var(--purple-dim)',
-                color: submitting || !userId || !tokens ? 'var(--text4)' : 'var(--purple)',
-                border: `0.5px solid ${submitting || !userId || !tokens ? 'var(--border)' : 'var(--purple)'}`,
+                background: submitting || !userId || !tokens ? 'var(--bg4)' : 'var(--orange-dim)',
+                color: submitting || !userId || !tokens ? 'var(--text4)' : 'var(--orange)',
+                border: `0.5px solid ${submitting || !userId || !tokens ? 'var(--border)' : 'var(--orange)'}`,
                 fontSize: 13, fontWeight: 500,
                 cursor: submitting || !userId || !tokens ? 'not-allowed' : 'pointer',
                 alignSelf: 'flex-start',

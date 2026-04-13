@@ -52,7 +52,7 @@ export async function GET(
   const completed    = activities.filter(a => a.status === 'done')
   const completedNums = completed.map(a => a.day_number)
   const currentDay   = (activities.map(a => a.day_number).sort((a,b) => a-b).find(d => !completedNums.includes(d))) ?? (completedNums.length + 1)
-  const lastAct      = [...activities].sort((a,b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]
+  const lastAct      = [...activities].sort((a,b) => new Date(b.updated_at ?? '').getTime() - new Date(a.updated_at ?? '').getTime())[0]
 
   const tokensTotal  = balances.reduce((s, b) => s + b.tokens_total, 0)
   const tokensUsed   = balances.reduce((s, b) => s + b.tokens_used,  0)
@@ -88,8 +88,8 @@ export async function GET(
     },
     pipeline: {
       total:       jobs.length,
-      applied:     jobs.filter(j => ['applied','interviewing','offer'].includes(j.status)).length,
-      interviewing: jobs.filter(j => ['interviewing','offer'].includes(j.status)).length,
+      applied:     jobs.filter(j => ['applied','interviewing','offer'].includes(j.status ?? '')).length,
+      interviewing: jobs.filter(j => ['interviewing','offer'].includes(j.status ?? '')).length,
       offers:      jobs.filter(j => j.status === 'offer').length,
     },
     tokens: {

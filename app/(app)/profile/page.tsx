@@ -33,7 +33,7 @@ export default async function ProfilePage() {
 
   const donedays   = days?.filter(d => d.status === 'done').length ?? 0
   const totalJobs  = jobs?.length ?? 0
-  const appliedJobs = jobs?.filter(j => ['applied','interviewing','offer'].includes(j.status)).length ?? 0
+  const appliedJobs = jobs?.filter(j => ['applied','interviewing','offer'].includes(j.status ?? '')).length ?? 0
   const topKeywords = keywords?.slice(0, 20) ?? []
 
   const cvName = (activeCV?.content as { personal?: { full_name?: string } } | null)?.personal?.full_name

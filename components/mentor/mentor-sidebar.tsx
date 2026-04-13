@@ -3,13 +3,16 @@
 import { usePathname, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
+import { SidebarPanel } from '@/components/layout/sidebar-panel'
 
 interface MentorSidebarProps {
   user: User | null
   role?: string
+  isOpen?: boolean
+  onClose?: () => void
 }
 
-export function MentorSidebar({ user, role = 'mentor' }: MentorSidebarProps) {
+export function MentorSidebar({ user, role = 'mentor', isOpen, onClose }: MentorSidebarProps) {
   const pathname = usePathname()
   const router   = useRouter()
   const supabase = createClient()
@@ -45,32 +48,10 @@ export function MentorSidebar({ user, role = 'mentor' }: MentorSidebarProps) {
         </svg>
       ),
     },
-    {
-      id: 'tokens', label: 'Tokens', href: '/mentor/tokens',
-      icon: (
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}>
-          <circle cx="8" cy="8" r="6" />
-          <path d="M8 5v6M6 7h3.5a1.5 1.5 0 010 3H6" />
-        </svg>
-      ),
-    },
-    {
-      id: 'settings', label: 'Configurações', href: '/mentor/settings',
-      icon: (
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}>
-          <circle cx="8" cy="8" r="2" />
-          <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M3.2 12.8l1.4-1.4M11.4 4.6l1.4-1.4" />
-        </svg>
-      ),
-    },
   ]
 
   return (
-    <nav style={{
-      width: 'var(--sidebar-w)', background: 'var(--bg2)',
-      borderRight: '0.5px solid var(--border)', display: 'flex',
-      flexDirection: 'column', flexShrink: 0,
-    }}>
+    <SidebarPanel isOpen={isOpen} className="mentor-sidebar-nav">
       {/* Top */}
       <div style={{ padding: '16px 14px 12px', borderBottom: '0.5px solid var(--border)' }}>
         <div style={{
@@ -80,6 +61,21 @@ export function MentorSidebar({ user, role = 'mentor' }: MentorSidebarProps) {
         }}>
           <span style={{ width: 5, height: 5, background: 'var(--purple)', borderRadius: '50%', display: 'inline-block' }} />
           TNG Mentor
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="sidebar-close-btn"
+              style={{
+                marginLeft: 'auto', background: 'none', border: 'none',
+                cursor: 'pointer', color: 'var(--text3)', padding: 4,
+                display: 'none', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <line x1="2" y1="2" x2="12" y2="12" /><line x1="12" y1="2" x2="2" y2="12" />
+              </svg>
+            </button>
+          )}
         </div>
 
         {/* User pill */}
@@ -170,6 +166,6 @@ export function MentorSidebar({ user, role = 'mentor' }: MentorSidebarProps) {
           Voltar ao app
         </button>
       </div>
-    </nav>
+    </SidebarPanel>
   )
 }

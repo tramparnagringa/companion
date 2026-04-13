@@ -14,7 +14,7 @@ export default async function PendingPage() {
     .eq('id', user.id)
     .single()
 
-  if (profile && ['bootcamp', 'mentoria', 'mentor', 'admin'].includes(profile.role)) {
+  if (profile && ['bootcamp', 'mentoria', 'mentor', 'admin'].includes(profile.role ?? '')) {
     redirect('/today')
   }
 

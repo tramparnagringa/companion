@@ -1260,7 +1260,7 @@ export function getCurrentDay(completedDays: number[], maxDay = 30): number {
   return Math.min(maxDone + 1, maxDay)
 }
 
-export function getStreak(activities: { day_number: number; status: string; completed_at: string | null }[]): number {
+export function getStreak(activities: { day_number: number; status: string | null; completed_at: string | null }[]): number {
   const doneDays = activities
     .filter(a => a.status === 'done' && a.completed_at)
     .map(a => a.day_number)

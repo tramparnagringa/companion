@@ -20,7 +20,7 @@ export default async function ProgressPage() {
 
   const doneCount     = completedDayNumbers.length
   const appliedCount  = jobs?.filter(j => j.status === 'applied').length ?? 0
-  const responseCount = jobs?.filter(j => ['interviewing', 'offer'].includes(j.status)).length ?? 0
+  const responseCount = jobs?.filter(j => ['interviewing', 'offer'].includes(j.status ?? '')).length ?? 0
   const responseRate  = appliedCount > 0 ? Math.round((responseCount / appliedCount) * 100) : 0
 
   const statusMap = new Map(allActivities.map(a => [a.day_number, a.status]))

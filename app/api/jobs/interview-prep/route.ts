@@ -1,5 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { anthropic } from '@/lib/anthropic/client'
+import type { Json } from '@/types/database'
 
 export async function POST(req: Request) {
   const supabase = await createServerClient()
@@ -90,7 +91,7 @@ Then respond ONLY with a valid JSON object (no markdown, no explanation):
   // Persist
   await supabase
     .from('jobs')
-    .update({ interview_prep: prep, updated_at: new Date().toISOString() })
+    .update({ interview_prep: prep as unknown as Json, updated_at: new Date().toISOString() })
     .eq('id', jobId)
     .eq('user_id', user.id)
 
