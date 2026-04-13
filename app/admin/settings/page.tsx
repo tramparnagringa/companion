@@ -1,4 +1,4 @@
-export default function MentorSettingsPage() {
+export default function AdminSettingsPage() {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', background: 'var(--bg)' }}>
       <div style={{ marginBottom: 28 }}>

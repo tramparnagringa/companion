@@ -19,12 +19,12 @@ async function getStudents() {
   const balances   = balancesRes.data ?? []
 
   return profiles.map(p => {
-    const userActs   = activities.filter(a => a.user_id === p.id)
-    const completed  = userActs.filter(a => a.status === 'done')
+    const userActs      = activities.filter(a => a.user_id === p.id)
+    const completed     = userActs.filter(a => a.status === 'done')
     const completedNums = completed.map(a => a.day_number)
-    const allDays    = userActs.map(a => a.day_number).sort((a, b) => a - b)
-    const currentDay = allDays.find(d => !completedNums.includes(d)) ?? (completedNums.length + 1)
-    const lastAct    = [...userActs].sort(
+    const allDays       = userActs.map(a => a.day_number).sort((a, b) => a - b)
+    const currentDay    = allDays.find(d => !completedNums.includes(d)) ?? (completedNums.length + 1)
+    const lastAct       = [...userActs].sort(
       (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     )[0]
 
@@ -47,11 +47,11 @@ async function getStudents() {
   })
 }
 
-export default async function StudentsPage() {
+export default async function AdminStudentsPage() {
   const students = await getStudents()
 
   return (
-    <div className="mentor-sub-page" style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', background: 'var(--bg)' }}>
+    <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', background: 'var(--bg)' }}>
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Alunos</h1>
         <p style={{ fontSize: 13, color: 'var(--text3)', margin: '4px 0 0' }}>
@@ -63,7 +63,6 @@ export default async function StudentsPage() {
         background: 'var(--bg2)', border: '0.5px solid var(--border)',
         borderRadius: 'var(--r)', overflow: 'hidden',
       }}>
-        {/* Table header — hidden on mobile (cards don't need it) */}
         <div className="students-table-desktop" style={{
           display: 'grid',
           gridTemplateColumns: '2fr 100px 140px 100px',
@@ -78,7 +77,7 @@ export default async function StudentsPage() {
           <span>Última atividade</span>
         </div>
 
-        <StudentsTable students={students} />
+        <StudentsTable students={students} basePath="/admin/students" />
       </div>
     </div>
   )

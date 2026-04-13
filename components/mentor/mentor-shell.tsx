@@ -1,18 +1,36 @@
 'use client'
 
-import { usePathname, useRouter } from 'next/navigation'
+import { useState } from 'react'
+import type { User } from '@supabase/supabase-js'
+import { MentorSidebar } from './mentor-sidebar'
 
-export function MentorShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
-  const router   = useRouter()
-  // Workspace (/mentor) has its own full-screen mobile navigation
-  const isWorkspace = pathname === '/mentor'
+interface MentorShellProps {
+  children: React.ReactNode
+  user: User | null
+  role?: string
+}
+
+export function MentorShell({ children, user, role }: MentorShellProps) {
+  const [open, setOpen] = useState(false)
 
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Mobile topbar — only on sub-pages */}
-      {!isWorkspace && (
-        <div className="mentor-sub-topbar" style={{
+    <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+      {/* Mobile backdrop */}
+      <div
+        className={`sidebar-backdrop${open ? ' sidebar-open' : ''}`}
+        onClick={() => setOpen(false)}
+      />
+
+      <MentorSidebar
+        user={user}
+        role={role}
+        isOpen={open}
+        onClose={() => setOpen(false)}
+      />
+
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Mobile topbar */}
+        <div className="mentor-mobile-topbar" style={{
           display: 'none',
           height: 'var(--topbar-h)', padding: '0 16px',
           borderBottom: '0.5px solid var(--border)',
@@ -20,18 +38,19 @@ export function MentorShell({ children }: { children: React.ReactNode }) {
           background: 'var(--bg)',
         }}>
           <button
-            onClick={() => router.push('/mentor')}
+            onClick={() => setOpen(o => !o)}
             style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '5px 10px', borderRadius: 'var(--rsm)',
-              background: 'none', border: '0.5px solid var(--border2)',
-              cursor: 'pointer', color: 'var(--text3)', fontSize: 12,
+              width: 30, height: 30, borderRadius: 'var(--rsm)',
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text2)', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
             }}
           >
-            <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <polyline points="10,4 6,8 10,12" />
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <line x1="2" y1="4" x2="14" y2="4" />
+              <line x1="2" y1="8" x2="14" y2="8" />
+              <line x1="2" y1="12" x2="14" y2="12" />
             </svg>
-            Mentor
           </button>
           <span style={{
             fontSize: 10, fontWeight: 600, letterSpacing: '.12em',
@@ -40,10 +59,10 @@ export function MentorShell({ children }: { children: React.ReactNode }) {
             TNG Mentor
           </span>
         </div>
-      )}
 
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        {children}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          {children}
+        </main>
       </div>
     </div>
   )

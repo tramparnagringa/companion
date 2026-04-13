@@ -40,7 +40,7 @@ function roleBadge(role: string) {
   )
 }
 
-export function StudentsTable({ students }: { students: StudentRow[] }) {
+export function StudentsTable({ students, basePath = '/mentor/students' }: { students: StudentRow[]; basePath?: string }) {
   if (students.length === 0) {
     return (
       <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--text4)', fontSize: 13 }}>
@@ -55,17 +55,16 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
       <div className="students-table-desktop">
         {students.map((s, i) => {
           const usedPct = s.tokensTotal > 0 ? Math.min((s.tokensUsed / s.tokensTotal) * 100, 100) : 0
-          const progressPct = Math.round((s.completedCount / 30) * 100)
           const isLast = i === students.length - 1
 
           return (
             <Link
               key={s.id}
-              href={`/mentor/students/${s.id}`}
+              href={`${basePath}/${s.id}`}
               className="mentor-student-row"
               style={{
                 display: 'grid',
-                gridTemplateColumns: '2fr 100px 80px 80px 120px 100px',
+                gridTemplateColumns: '2fr 100px 140px 100px',
                 padding: '12px 16px',
                 borderBottom: isLast ? 'none' : '0.5px solid var(--border)',
                 textDecoration: 'none',
@@ -82,23 +81,6 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
               </div>
 
               <div>{roleBadge(s.role)}</div>
-
-              <div>
-                <div style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 3 }}>
-                  {s.completedCount}/30
-                </div>
-                <div style={{ height: 3, background: 'var(--bg4)', borderRadius: 2, width: 60, overflow: 'hidden' }}>
-                  <div style={{
-                    height: '100%', borderRadius: 2,
-                    width: `${progressPct}%`,
-                    background: progressPct >= 100 ? 'var(--green)' : 'var(--accent)',
-                  }} />
-                </div>
-              </div>
-
-              <div style={{ fontSize: 13, color: 'var(--text2)' }}>
-                Dia {s.currentDay}
-              </div>
 
               <div>
                 <div style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)', marginBottom: 3 }}>
@@ -130,7 +112,7 @@ export function StudentsTable({ students }: { students: StudentRow[] }) {
           return (
             <Link
               key={s.id}
-              href={`/mentor/students/${s.id}`}
+              href={`${basePath}/${s.id}`}
               style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '14px 16px',

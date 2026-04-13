@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import type { User } from '@supabase/supabase-js'
+import { SidebarPanel } from './sidebar-panel'
 
 interface Enrollment {
   id: string
@@ -125,11 +126,7 @@ export function Sidebar({
   ]
 
   return (
-    <nav className={`sidebar-nav${isOpen ? ' sidebar-open' : ''}`} style={{
-      width: 'var(--sidebar-w)', background: 'var(--bg2)',
-      borderRight: '0.5px solid var(--border)', display: 'flex',
-      flexDirection: 'column', flexShrink: 0, zIndex: 50,
-    }}>
+    <SidebarPanel isOpen={isOpen}>
       {/* Top */}
       <div style={{ padding: '16px 14px 12px', borderBottom: '0.5px solid var(--border)' }}>
         <div style={{
@@ -304,6 +301,6 @@ export function Sidebar({
         </div>
       </div>
 
-    </nav>
+    </SidebarPanel>
   )
 }

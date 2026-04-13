@@ -48,7 +48,7 @@ async function getStudentData(userId: string): Promise<StudentData | null> {
   }
 }
 
-export default async function StudentDetailPage({
+export default async function AdminStudentDetailPage({
   params,
 }: {
   params: Promise<{ userId: string }>
@@ -58,5 +58,5 @@ export default async function StudentDetailPage({
 
   if (!data) notFound()
 
-  return <StudentTabs data={data} userId={userId} backHref="/mentor/students" />
+  return <StudentTabs data={data} userId={userId} backHref="/admin/students" />
 }

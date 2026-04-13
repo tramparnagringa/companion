@@ -18,7 +18,7 @@ export default async function MentorLayout({ children }: { children: React.React
   return (
     <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
       <ContextRail role={role} user={user} />
-      <MentorShell>{children}</MentorShell>
+      <MentorShell user={user} role={role}>{children}</MentorShell>
     </div>
   )
 }
