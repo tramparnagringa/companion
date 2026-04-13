@@ -25,7 +25,7 @@ async function getStudents() {
     const allDays    = userActs.map(a => a.day_number).sort((a, b) => a - b)
     const currentDay = allDays.find(d => !completedNums.includes(d)) ?? (completedNums.length + 1)
     const lastAct    = [...userActs].sort(
-      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+      (a, b) => new Date(b.updated_at ?? '').getTime() - new Date(a.updated_at ?? '').getTime()
     )[0]
 
     const userBals    = balances.filter(

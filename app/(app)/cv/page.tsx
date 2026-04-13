@@ -65,7 +65,7 @@ export default async function CVPage() {
                       {v.name}
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>
-                      {new Date(v.created_at).toLocaleDateString('pt-BR')}
+                      {v.created_at ? new Date(v.created_at).toLocaleDateString('pt-BR') : '—'}
                     </div>
                     <span style={{
                       fontSize: 9, padding: '1px 6px', borderRadius: 8, marginTop: 4, display: 'inline-block',

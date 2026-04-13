@@ -33,18 +33,18 @@ async function buildStudentContext(studentId: string): Promise<string> {
   const bals = balancesRes.data ?? []
 
   const completed  = acts.filter(a => a.status === 'done').length
-  const lastAct    = [...acts].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime())[0]
+  const lastAct    = [...acts].sort((a, b) => new Date(b.updated_at ?? '').getTime() - new Date(a.updated_at ?? '').getTime())[0]
   const tokensLeft = bals.reduce((s, b) => s + b.tokens_total - b.tokens_used, 0)
 
-  const applied      = jobs.filter(j => ['applied','interviewing','offer'].includes(j.status)).length
-  const interviewing = jobs.filter(j => ['interviewing','offer'].includes(j.status)).length
+  const applied      = jobs.filter(j => ['applied','interviewing','offer'].includes(j.status ?? '')).length
+  const interviewing = jobs.filter(j => ['interviewing','offer'].includes(j.status ?? '')).length
   const offers       = jobs.filter(j => j.status === 'offer').length
 
   const salaryStr = c?.salary_min
     ? `$${c.salary_min/1000}k–$${(c.salary_max ?? 0)/1000}k ${c.salary_currency ?? 'USD'}`
     : 'não definida'
 
-  const h = lastAct ? (Date.now() - new Date(lastAct.updated_at).getTime()) / 3_600_000 : Infinity
+  const h = lastAct ? (Date.now() - new Date(lastAct.updated_at ?? '').getTime()) / 3_600_000 : Infinity
   const activityStr = !lastAct ? 'nunca acessou' : h < 2 ? 'ativo agora' : h < 24 ? `${Math.round(h)}h atrás` : `${Math.floor(h/24)}d atrás`
 
   return `DOSSIER DO ALUNO:

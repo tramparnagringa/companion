@@ -5,7 +5,7 @@ import Link from 'next/link'
 interface StudentRow {
   id: string
   full_name: string | null
-  role: string
+  role: string | null
   currentDay: number
   completedCount: number
   lastActivity: string | null
@@ -22,14 +22,14 @@ function timeAgo(iso: string | null) {
   return `${Math.floor(h / 24)}d atrás`
 }
 
-function roleBadge(role: string) {
+function roleBadge(role: string | null) {
   const map: Record<string, { label: string; color: string; bg: string }> = {
     bootcamp: { label: 'Bootcamp', color: 'var(--accent)',  bg: 'var(--accent-dim)'  },
     mentoria: { label: 'Mentoria', color: 'var(--purple)',  bg: 'var(--purple-dim)'  },
     mentor:   { label: 'Mentor',   color: 'var(--teal)',    bg: 'var(--teal-dim)'    },
     admin:    { label: 'Admin',    color: 'var(--orange)',  bg: 'var(--orange-dim)'  },
   }
-  const s = map[role] ?? { label: role, color: 'var(--text3)', bg: 'var(--bg4)' }
+  const s = (role ? map[role] : null) ?? { label: role ?? '—', color: 'var(--text3)', bg: 'var(--bg4)' }
   return (
     <span style={{
       fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 10,

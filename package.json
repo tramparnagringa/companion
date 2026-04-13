@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "migrate": "npx supabase db push"
+    "migrate": "npx supabase db push",
+    "type-check": "npx next typegen && tsc --noEmit"
+
   },
   "dependencies": {
     "@abacatepay/sdk": "^1.2.0",

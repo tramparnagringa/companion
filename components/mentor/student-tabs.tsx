@@ -8,8 +8,8 @@ import { StudentChat } from './student-chat'
 interface Profile {
   id: string
   full_name: string | null
-  role: string
-  created_at: string
+  role: string | null
+  created_at: string | null
 }
 
 interface CandidateProfile {
@@ -27,28 +27,28 @@ interface CandidateProfile {
 
 interface DayActivity {
   day_number: number
-  status: string
+  status: string | null
   outputs: unknown
   completed_at: string | null
-  updated_at: string
+  updated_at: string | null
 }
 
 interface Job {
   id: string
   company_name: string
   role_title: string
-  status: string
+  status: string | null
   fit_score: number | null
   apply_recommendation: boolean | null
-  created_at: string
+  created_at: string | null
 }
 
 interface CvVersion {
   id: string
   name: string
-  generated_by: string
-  is_active: boolean
-  created_at: string
+  generated_by: string | null
+  is_active: boolean | null
+  created_at: string | null
 }
 
 interface TokenBalance {
@@ -57,15 +57,15 @@ interface TokenBalance {
   tokens_used: number
   product_type: string
   expires_at: string
-  is_active: boolean
-  created_at: string
+  is_active: boolean | null
+  created_at: string | null
 }
 
 interface TokenUsage {
   id: string
   tokens_consumed: number
   interaction_type: string
-  created_at: string
+  created_at: string | null
 }
 
 interface StarStory {
@@ -87,7 +87,7 @@ interface MentorAction {
   id: string
   action: string
   metadata: unknown
-  created_at: string
+  created_at: string | null
 }
 
 export interface Enrollment {
@@ -119,7 +119,8 @@ export interface StudentData {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function fmt(iso: string) {
+function fmt(iso: string | null) {
+  if (!iso) return '—'
   return new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: '2-digit' })
 }
 
@@ -139,7 +140,7 @@ const JOB_STATUS_LABELS: Record<string, { label: string; color: string; bg: stri
   discarded:    { label: 'Descartado',   color: 'var(--text4)',  bg: 'var(--bg3)' },
 }
 
-function Chip({ label, color, bg }: { label: string; color: string; bg: string }) {
+function Chip({ label, color, bg }: { label: string | null; color: string; bg: string }) {
   return (
     <span style={{
       fontSize: 10, fontWeight: 500, padding: '2px 8px',
@@ -171,8 +172,8 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function DashboardTab({ data }: { data: StudentData }) {
   const { profile, candidate, jobs, tokenBalances, enrollments } = data
 
-  const applied      = jobs.filter(j => ['applied', 'interviewing', 'offer'].includes(j.status)).length
-  const interviews   = jobs.filter(j => ['interviewing', 'offer'].includes(j.status)).length
+  const applied      = jobs.filter(j => ['applied', 'interviewing', 'offer'].includes(j.status ?? '')).length
+  const interviews   = jobs.filter(j => ['interviewing', 'offer'].includes(j.status ?? '')).length
   const responseRate = applied > 0 ? Math.round((interviews / applied) * 100) : 0
   const tokensTotal  = tokenBalances.filter(b => b.is_active).reduce((s, b) => s + b.tokens_total, 0)
   const tokensUsed   = tokenBalances.filter(b => b.is_active).reduce((s, b) => s + b.tokens_used,  0)
@@ -341,7 +342,7 @@ function ProgressoTab({ data }: { data: StudentData }) {
   const totalSlots = Math.max(maxDay, 30)
   const all = Array.from({ length: totalSlots }, (_, i) => i + 1)
   const statusByDay: Record<number, string> = {}
-  for (const d of days) statusByDay[d.day_number] = d.status
+  for (const d of days) statusByDay[d.day_number] = d.status ?? 'pending'
 
   return (
     <div>
@@ -382,12 +383,12 @@ function ProgressoTab({ data }: { data: StudentData }) {
                 borderRadius: 'var(--rsm)', border: '0.5px solid var(--border)',
                 display: 'flex', alignItems: 'center', gap: 12,
               }}>
-                <div style={{ width: 28, fontSize: 12, fontWeight: 500, color: STATUS_COLORS[d.status] ?? 'var(--text4)' }}>
+                <div style={{ width: 28, fontSize: 12, fontWeight: 500, color: STATUS_COLORS[d.status ?? 'pending'] ?? 'var(--text4)' }}>
                   D{d.day_number}
                 </div>
                 <Chip
-                  label={d.status}
-                  color={STATUS_COLORS[d.status] ?? 'var(--text4)'}
+                  label={d.status ?? 'pending'}
+                  color={STATUS_COLORS[d.status ?? 'pending'] ?? 'var(--text4)'}
                   bg={d.status === 'done' ? 'var(--green-dim)' : d.status === 'in_progress' ? 'var(--accent-dim)' : 'var(--bg4)'}
                 />
                 {d.completed_at && (
@@ -756,7 +757,7 @@ function AcoesTab({ data, userId }: { data: StudentData; userId: string }) {
                   )}
                 </div>
                 <span style={{ fontSize: 11, color: 'var(--text4)' }}>
-                  {new Date(a.created_at).toLocaleDateString('pt-BR')}
+                  {fmt(a.created_at)}
                 </span>
               </div>
             ))}
