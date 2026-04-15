@@ -145,9 +145,11 @@ export async function executeToolCall(
         .select('*')
         .eq('user_id', userId)
         .eq('is_active', true)
-        .single()
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
 
-      if (cvError || !activeCV) return { error: 'No active CV version' }
+      if (cvError || !activeCV) return { error: 'No active CV found' }
 
       const content = activeCV.content as Record<string, unknown>
       const experience = (content.experience as Record<string, unknown>[]) ?? []
@@ -159,21 +161,96 @@ export async function executeToolCall(
 
       const updatedContent = { ...content, experience } as any
 
-      if (input.create_new_version) {
-        await supabase.from('cv_versions').update({ is_active: false }).eq('user_id', userId)
-        const { error } = await supabase.from('cv_versions').insert({
-          user_id:      userId,
-          name:         (input.version_name as string) ?? `v${Date.now()}`,
-          generated_by: 'ai',
-          is_active:    true,
-          content:      updatedContent,
-        })
-        if (error) { console.error('[tool:save_cv_bullets insert]', error); return { error: error.message } }
-      } else {
-        const { error } = await supabase.from('cv_versions').update({ content: updatedContent }).eq('id', activeCV.id)
-        if (error) { console.error('[tool:save_cv_bullets update]', error); return { error: error.message } }
-      }
+      const { error } = await supabase
+        .from('cv_versions')
+        .update({ content: updatedContent })
+        .eq('id', activeCV.id)
+      if (error) { console.error('[tool:save_cv_bullets]', error); return { error: error.message } }
       return { updated: true }
+    }
+
+    case 'get_cv_draft': {
+      const { data, error } = await supabase
+        .from('cv_versions')
+        .select('content')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (error) return { error: error.message }
+      if (!data) return { error: 'No active CV found' }
+      return data.content
+    }
+
+    case 'update_cv_section': {
+      const { data: activeCV, error: cvError } = await supabase
+        .from('cv_versions')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (cvError || !activeCV) return { error: 'No active CV found' }
+
+      const content = (activeCV.content ?? {}) as Record<string, unknown>
+      const section = input.section as string
+
+      let updatedSection: unknown
+
+      if (section === 'experience' && input.experience_index !== undefined && input.bullets) {
+        // Targeted bullet update for a specific experience entry
+        const experience = ((content.experience ?? []) as Record<string, unknown>[])
+        const idx = input.experience_index as number
+        if (experience[idx]) {
+          experience[idx] = { ...experience[idx], bullets: input.bullets }
+        }
+        updatedSection = experience
+      } else if (section === 'summary') {
+        if (Array.isArray(input.patch)) {
+          updatedSection = input.patch
+        } else if (typeof input.patch === 'string') {
+          try {
+            const parsed = JSON.parse(input.patch)
+            updatedSection = Array.isArray(parsed) ? parsed : [input.patch]
+          } catch {
+            updatedSection = [input.patch]
+          }
+        } else {
+          updatedSection = input.patch
+        }
+      } else {
+        // Deep merge patch into existing section
+        // Normalise patch: the AI may send a JSON-encoded string instead of a parsed value
+        let patch = input.patch
+        if (typeof patch === 'string' && (patch.trim().startsWith('[') || patch.trim().startsWith('{'))) {
+          try { patch = JSON.parse(patch) } catch { /* use raw string */ }
+        }
+        const existing = content[section]
+        if (Array.isArray(existing) && Array.isArray(patch)) {
+          updatedSection = patch
+        } else if (existing && typeof existing === 'object' && !Array.isArray(existing) &&
+                   patch && typeof patch === 'object' && !Array.isArray(patch)) {
+          updatedSection = { ...(existing as object), ...(patch as object) }
+        } else {
+          updatedSection = patch
+        }
+      }
+
+      const updatedContent = { ...content, [section]: updatedSection }
+
+      const { error: updateError } = await supabase
+        .from('cv_versions')
+        .update({ content: updatedContent as any })
+        .eq('id', activeCV.id)
+
+      if (updateError) {
+        console.error('[tool:update_cv_section]', updateError)
+        return { error: updateError.message }
+      }
+      return { updated: true, section }
     }
 
     case 'save_linkedin_content': {
