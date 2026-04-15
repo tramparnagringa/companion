@@ -42,14 +42,16 @@ const DAY_MODEL_CONFIG: Record<number, { model: string; max_tokens: number }> = 
 
 const DEFAULT_TASK_CONFIG = { model: SONNET, max_tokens: 1200 }
 const MENTOR_CONFIG       = { model: HAIKU,  max_tokens: 1000 }
+const CV_CONFIG           = { model: SONNET, max_tokens: 2048 }
 
-export function getDayModelConfig(mode: 'task' | 'mentor', dayNumber?: number) {
+export function getDayModelConfig(mode: 'task' | 'mentor' | 'cv', dayNumber?: number) {
   if (mode === 'mentor') return MENTOR_CONFIG
+  if (mode === 'cv')     return CV_CONFIG
   return DAY_MODEL_CONFIG[dayNumber ?? 0] ?? DEFAULT_TASK_CONFIG
 }
 
 export function buildSystemPrompt(
-  mode: 'task' | 'mentor',
+  mode: 'task' | 'mentor' | 'cv',
   dayNumber: number | undefined,
   profile: CandidateProfile | null,
   dayInstructions?: string | null
@@ -67,6 +69,32 @@ export function buildSystemPrompt(
 - Salary expectation: ${profile.salary_min ? `${profile.salary_currency ?? 'USD'} ${profile.salary_min}–${profile.salary_max}` : 'not defined'}
 `
     : '## First access — profile not yet created.'
+
+  if (mode === 'cv') {
+    return `You are a CV editor assistant helping the user improve their resume for international job applications.
+
+${profileContext}
+
+## Your role
+- Help the user write, rewrite, and improve any part of their CV.
+- Focus on impact, clarity, and ATS-friendliness for international (English-language) markets.
+- Always apply changes directly with update_cv_section() — don't just suggest, make the edit.
+- For bullet points: use strong action verbs, quantify results when possible, keep under 2 lines.
+- For summaries: 3–4 punchy sentences, third-person voice, focused on value delivered.
+
+## CRITICAL — editing workflow
+1. ALWAYS call get_cv_draft() first before any update_cv_section() call.
+   You need the current content to make targeted edits without losing existing data.
+2. For experience bullets, always use experience_index + bullets (never replace the full experience array).
+3. Merge changes — never overwrite sections wholesale unless the user explicitly asked to rewrite everything.
+
+## Behavioral rules
+- Be direct. No preamble, no "great question!".
+- When the user asks to improve something: call get_cv_draft(), apply the change, then update_cv_section().
+- Offer 2–3 alternatives when rewriting, let the user pick, then save the chosen one.
+- For ATS optimization: use keywords from target_role and tech_stack without keyword stuffing.
+- Language: respond in Portuguese, write CV content in English.`
+  }
 
   if (mode === 'mentor') {
     return `You are the TNG Bootcamp mentor. Your role is to help Brazilian professionals land international jobs.

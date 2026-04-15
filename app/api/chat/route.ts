@@ -11,7 +11,7 @@ export async function POST(req: Request) {
   let supabase: Awaited<ReturnType<typeof createServerClient>>
   let userId: string
   let messages: Anthropic.MessageParam[]
-  let mode: 'task' | 'mentor'
+  let mode: 'task' | 'mentor' | 'cv'
   let dayNumber: number | undefined
   let sessionId: string | undefined
   let slug: string | undefined
@@ -24,12 +24,12 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     messages  = body.messages
-    mode      = body.mode === 'mentor' ? 'mentor' : 'task'
+    mode      = body.mode === 'mentor' ? 'mentor' : body.mode === 'cv' ? 'cv' : 'task'
     dayNumber = body.dayNumber
     slug      = body.slug as string | undefined
     sessionId = body.sessionId as string | undefined
 
-    const cost = mode === 'mentor' ? TOKEN_COSTS.mentor_message : TOKEN_COSTS.chat_message
+    const cost = mode === 'mentor' ? TOKEN_COSTS.mentor_message : TOKEN_COSTS.cv_rewrite ?? TOKEN_COSTS.chat_message
     const { allowed } = await checkTokenBalance(userId, cost)
     if (!allowed) {
       return Response.json({ error: 'token_limit_reached' }, { status: 402 })
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
   const [{ data: candidateProfile }, programDay] = await Promise.all([
     supabase!.from('candidate_profiles').select('*').eq('user_id', userId!).single(),
-    mode === 'task' && dayNumber
+    mode === 'task' && dayNumber !== undefined
       ? (slug
           ? getEnrollmentBySlug(userId!, slug, supabase!).then(e => e ? getProgramDay(e.program_id, dayNumber, supabase!) : null)
           : getDayForUser(userId!, dayNumber, supabase!))
@@ -119,10 +119,11 @@ export async function POST(req: Request) {
           ]
         }
 
+        const interactionType = mode === 'mentor' ? 'mentor' : mode === 'cv' ? 'cv_rewrite' : 'chat'
         await recordTokenUsage(
           userId!,
           totalInputTokens + totalOutputTokens,
-          mode === 'mentor' ? 'mentor' : 'chat',
+          interactionType,
           { day_number: dayNumber }
         )
 

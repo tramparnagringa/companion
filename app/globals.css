@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Mono:wght@400;500&family=Roboto:wght@400;700&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 
@@ -335,4 +335,39 @@ html, body {
   .admin-mobile-topbar {
     display: flex !important;
   }
+}
+
+/* ── Print: CV page only ──────────────────────────────────────────────── */
+@media print {
+  /* 1. Remove ALL overflow/height constraints across the entire tree —
+        the app shell has height:100dvh + overflow:hidden on elements
+        without class selectors, so we reset everything at once. */
+  body.cv-page,
+  body.cv-page * {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    min-height: 0 !important;
+  }
+
+  /* 2. Hide app chrome so it doesn't occupy space on the printed page */
+  body.cv-page .sidebar-nav,
+  body.cv-page .sidebar-backdrop,
+  body.cv-page .context-rail,
+  body.cv-page [data-print-hide] {
+    display: none !important;
+  }
+
+  /* 3. Strip decorations from the document box */
+  body.cv-page [data-cv-doc] {
+    box-shadow: none !important;
+    padding: 0 !important;
+    width: 100% !important;
+    background: #fff !important;
+  }
+}
+
+@page {
+  margin: 15mm 18mm;
+  size: A4;
 }

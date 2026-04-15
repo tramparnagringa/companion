@@ -121,8 +121,6 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
             },
           },
         },
-        create_new_version: { type: 'boolean' },
-        version_name:       { type: 'string' },
       },
       required: ['experience_index', 'bullets'],
     },
@@ -205,6 +203,47 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
     name: 'get_application_stats',
     description: 'Returns application statistics: total count, response rate, most common stage.',
     input_schema: { type: 'object', properties: {}, required: [] },
+  },
+
+  // ── CV (AI editing) ──
+  {
+    name: 'get_cv_draft',
+    description: `Fetches the full content of the user's current CV draft. ALWAYS call this before any update_cv_section call — you need to see the current state to make targeted edits without losing existing data.`,
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+  {
+    name: 'update_cv_section',
+    description: `Updates a specific section of the user's CV draft. Call get_cv_draft() first to see the current state. For experience bullets, always use experience_index + bullets to target a specific entry — never replace the full experience array unless explicitly rewriting all entries.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        section: {
+          type: 'string',
+          enum: ['personal', 'summary', 'experience', 'skills', 'education', 'optional'],
+          description: 'Which CV section to update.',
+        },
+        patch: {
+          type: 'object',
+          description: `Partial update for the section. Structure depends on section:
+- personal: { full_name?, position?, location?, email?, phone?, linkedin?, github?, website? }
+- summary: string[] (array of paragraph strings)
+- experience: full array or use experience_index + bullets for targeted bullet update
+- skills: { primary?: { area, items[] }, adjacent?: [{ area, items[] }] }
+- education: [{ degree, institution, year }]
+- optional: { languages?, projects?, awards? }`,
+        },
+        experience_index: {
+          type: 'number',
+          description: 'If updating bullets for a specific experience entry, provide its 0-based index.',
+        },
+        bullets: {
+          type: 'array',
+          items: { type: 'object', properties: { text: { type: 'string' }, ai_generated: { type: 'boolean' } } },
+          description: 'New bullets for a specific experience entry (use with experience_index).',
+        },
+      },
+      required: ['section'],
+    },
   },
 
   // ── NOTES / PLANS ──
