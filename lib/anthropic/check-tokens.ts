@@ -27,7 +27,10 @@ export async function recordTokenUsage(
   userId: string,
   tokensConsumed: number,
   interactionType: string,
-  metadata: Record<string, unknown> = {}
+  metadata: Record<string, unknown> = {},
+  model?: string,
+  inputTokens?: number,
+  outputTokens?: number
 ) {
   const supabase = createServiceClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,5 +39,8 @@ export async function recordTokenUsage(
     p_tokens: tokensConsumed,
     p_interaction_type: interactionType,
     p_metadata: metadata,
+    p_model: model ?? null,
+    p_input_tokens: inputTokens ?? null,
+    p_output_tokens: outputTokens ?? null,
   })
 }
