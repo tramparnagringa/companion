@@ -2,7 +2,7 @@ import type { Database } from '@/types/database'
 
 type CandidateProfile = Database['public']['Tables']['candidate_profiles']['Row']
 
-const SONNET = 'claude-sonnet-4-6'
+const SONNET = 'claude-haiku-4-5-20251001' // TEST: using haiku for all days
 const HAIKU  = 'claude-haiku-4-5-20251001'
 
 // Sonnet: heavy generation (CV analysis, bullets, LinkedIn writing, job fit scoring, simulations).

@@ -70,11 +70,16 @@ export async function POST(req: Request) {
           if (cancelled) break
           const { model, max_tokens } = { model: dayModel, max_tokens: dayMaxTokens }
 
+          const cachedTools = [
+            ...ALL_TOOLS.slice(0, -1),
+            { ...ALL_TOOLS[ALL_TOOLS.length - 1], cache_control: { type: 'ephemeral' as const } },
+          ]
+
           const stream = anthropic.messages.stream({
             model,
             max_tokens,
-            system: systemPrompt,
-            tools: ALL_TOOLS,
+            system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
+            tools: cachedTools,
             messages: currentMessages,
           })
 
@@ -124,7 +129,10 @@ export async function POST(req: Request) {
           userId!,
           totalInputTokens + totalOutputTokens,
           interactionType,
-          { day_number: dayNumber }
+          { day_number: dayNumber },
+          dayModel,
+          totalInputTokens,
+          totalOutputTokens
         )
 
         if (!cancelled) {
