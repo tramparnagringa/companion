@@ -16,6 +16,7 @@ interface SidebarProps {
   user: User | null
   role?: string
   enrollments?: Enrollment[]
+  enrollmentIdsWithPlans?: string[]
   tokenUsed?: number
   tokenTotal?: number
   plan?: string
@@ -27,6 +28,7 @@ export function Sidebar({
   user,
   role: _role = 'student',
   enrollments = [],
+  enrollmentIdsWithPlans = [],
   tokenUsed = 0,
   tokenTotal = 2_000_000,
   plan = 'Bootcamp',
@@ -86,11 +88,11 @@ export function Sidebar({
           badge: undefined,
           icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="5" height="5" rx="1" /><rect x="9" y="2" width="5" height="5" rx="1" /><rect x="2" y="9" width="5" height="5" rx="1" /><rect x="9" y="9" width="5" height="5" rx="1" /></svg>,
         },
-        {
+        ...(enrollmentIdsWithPlans.includes(activeEnrollment?.id ?? '') ? [{
           id: 'plans', label: 'Planos de Ação', href: `/${slug}/plans`,
           badge: undefined,
           icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="12" height="12" rx="1.5" /><polyline points="5,8 7,10 11,6" /></svg>,
-        },
+        }] : []),
       ],
     },
     {
@@ -154,8 +156,8 @@ export function Sidebar({
           )}
         </div>
 
-        {/* Program switcher — visible when enrolled in more than one program */}
-        {enrollments.length > 1 && (
+        {/* Program switcher — visible when enrolled in at least one program */}
+        {enrollments.length >= 1 && (
           <div style={{ marginTop: 10 }}>
             <div style={{
               fontSize: 10, fontWeight: 500, letterSpacing: '.08em',
@@ -164,36 +166,50 @@ export function Sidebar({
               Programa
             </div>
             <div style={{ position: 'relative' }}>
-              <select
-                value={activeSlug ?? ''}
-                onChange={e => router.push(`/${e.target.value}/today`)}
-                style={{
-                  width: '100%', padding: '7px 28px 7px 10px',
+              {enrollments.length === 1 ? (
+                <div style={{
+                  width: '100%', padding: '7px 10px',
                   borderRadius: 'var(--rsm)', fontSize: 12, fontWeight: 500,
                   background: 'var(--accent-dim)',
                   border: '0.5px solid rgba(228,253,139,.25)',
-                  color: 'var(--accent)', cursor: 'pointer', outline: 'none',
-                  appearance: 'none', WebkitAppearance: 'none',
-                  fontFamily: 'inherit',
-                }}
-              >
-                {enrollments.map(e => (
-                  <option key={e.id} value={e.slug} style={{ background: 'var(--bg3)', color: 'var(--text)' }}>
-                    {e.name}
-                  </option>
-                ))}
-              </select>
-              {/* Chevron */}
-              <svg
-                viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
-                style={{
-                  width: 11, height: 11, position: 'absolute', right: 8,
-                  top: '50%', transform: 'translateY(-50%)',
-                  color: 'var(--accent)', pointerEvents: 'none',
-                }}
-              >
-                <polyline points="4,6 8,10 12,6" />
-              </svg>
+                  color: 'var(--accent)',
+                }}>
+                  {enrollments[0].name}
+                </div>
+              ) : (
+                <>
+                  <select
+                    value={activeSlug ?? ''}
+                    onChange={e => router.push(`/${e.target.value}/today`)}
+                    style={{
+                      width: '100%', padding: '7px 28px 7px 10px',
+                      borderRadius: 'var(--rsm)', fontSize: 12, fontWeight: 500,
+                      background: 'var(--accent-dim)',
+                      border: '0.5px solid rgba(228,253,139,.25)',
+                      color: 'var(--accent)', cursor: 'pointer', outline: 'none',
+                      appearance: 'none', WebkitAppearance: 'none',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    {enrollments.map(e => (
+                      <option key={e.id} value={e.slug} style={{ background: 'var(--bg3)', color: 'var(--text)' }}>
+                        {e.name}
+                      </option>
+                    ))}
+                  </select>
+                  {/* Chevron */}
+                  <svg
+                    viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
+                    style={{
+                      width: 11, height: 11, position: 'absolute', right: 8,
+                      top: '50%', transform: 'translateY(-50%)',
+                      color: 'var(--accent)', pointerEvents: 'none',
+                    }}
+                  >
+                    <polyline points="4,6 8,10 12,6" />
+                  </svg>
+                </>
+              )}
             </div>
           </div>
         )}

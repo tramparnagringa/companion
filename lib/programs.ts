@@ -125,36 +125,13 @@ export async function getActiveEnrollment(
 }
 
 /**
- * Returns the active enrollment, creating one for the default program if
- * the user has none. Safe to call on every page load (idempotent upsert).
+ * Returns the active enrollment for the user, or null if none exists.
+ * Enrollment must be granted manually by a mentor or admin.
  */
 export async function ensureEnrollment(
   userId: string,
   supabase: Supabase
 ): Promise<UserEnrollment | null> {
-  const existing = await getActiveEnrollment(userId, supabase)
-  if (existing) return existing
-
-  // Find the default program
-  const { data: program, error: programError } = await supabase
-    .from('programs')
-    .select('id')
-    .eq('slug', DEFAULT_PROGRAM_SLUG)
-    .single()
-
-  if (programError || !program) {
-    console.error('[programs] default program not found:', programError)
-    return null
-  }
-
-  // Create enrollment — ignore conflict (another request may have just created it)
-  await supabase
-    .from('user_programs')
-    .upsert(
-      { user_id: userId, program_id: program.id, status: 'active' },
-      { onConflict: 'user_id,program_id', ignoreDuplicates: true }
-    )
-
   return getActiveEnrollment(userId, supabase)
 }
 

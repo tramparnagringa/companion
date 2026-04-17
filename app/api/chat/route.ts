@@ -5,7 +5,7 @@ import { buildSystemPrompt, getDayModelConfig } from '@/lib/anthropic/system-pro
 import { ALL_TOOLS } from '@/lib/anthropic/tools'
 import { executeToolCall } from '@/lib/anthropic/tool-executor'
 import { TOKEN_COSTS } from '@/lib/tokens'
-import { getDayForUser, getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
+import { getActiveEnrollment, getDayForUser, getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
 
 export async function POST(req: Request) {
   let supabase: Awaited<ReturnType<typeof createServerClient>>
@@ -39,13 +39,17 @@ export async function POST(req: Request) {
     return Response.json({ error: 'internal_error' }, { status: 500 })
   }
 
+  const enrollment = slug
+    ? await getEnrollmentBySlug(userId!, slug, supabase!)
+    : await getActiveEnrollment(userId!, supabase!)
+
   const [{ data: candidateProfile }, programDay] = await Promise.all([
     supabase!.from('candidate_profiles').select('*').eq('user_id', userId!).single(),
-    mode === 'task' && dayNumber !== undefined
-      ? (slug
-          ? getEnrollmentBySlug(userId!, slug, supabase!).then(e => e ? getProgramDay(e.program_id, dayNumber, supabase!) : null)
-          : getDayForUser(userId!, dayNumber, supabase!))
-      : Promise.resolve(null),
+    mode === 'task' && dayNumber !== undefined && enrollment
+      ? getProgramDay(enrollment.program_id, dayNumber, supabase!)
+      : mode === 'task' && dayNumber !== undefined
+        ? getDayForUser(userId!, dayNumber, supabase!)
+        : Promise.resolve(null),
   ])
 
   const systemPrompt = buildSystemPrompt(mode!, dayNumber, candidateProfile, programDay?.ai_instructions)
@@ -106,7 +110,7 @@ export async function POST(req: Request) {
           const toolResults: Anthropic.ToolResultBlockParam[] = []
 
           for (const toolBlock of toolBlocks) {
-            const result = await executeToolCall(toolBlock, userId!, supabase!, sessionId)
+            const result = await executeToolCall(toolBlock, userId!, supabase!, sessionId, enrollment?.id)
             if (!cancelled) controller.enqueue(
               encoder.encode(`data: ${JSON.stringify({ type: 'tool_result', tool: toolBlock.name })}\n\n`)
             )

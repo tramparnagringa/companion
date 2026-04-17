@@ -9,6 +9,13 @@ interface Message {
   content: string
 }
 
+interface ToolIndicator {
+  tool: string
+  label: string
+  status: 'running' | 'done'
+  result?: string
+}
+
 const SUGGESTIONS = [
   'Quais são os principais pontos fortes desse candidato?',
   'Esse candidato está pronto para entrevistas internacionais?',
@@ -22,6 +29,7 @@ export function StudentChat({ userId }: { userId: string }) {
   const [loading, setLoading]       = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
   const [sessionId, setSessionId]   = useState<string | null>(null)
+  const [toolIndicators, setToolIndicators] = useState<ToolIndicator[]>([])
   const bottomRef                   = useRef<HTMLDivElement>(null)
   const inputRef                    = useRef<HTMLTextAreaElement>(null)
 
@@ -69,6 +77,7 @@ export function StudentChat({ userId }: { userId: string }) {
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buffer = ''
+      setToolIndicators([])
 
       while (true) {
         const { done, value } = await reader.read()
@@ -81,9 +90,9 @@ export function StudentChat({ userId }: { userId: string }) {
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
           const payload = line.slice(6)
-          if (payload === '[DONE]') break
           try {
             const parsed = JSON.parse(payload)
+
             if (parsed.text) {
               setMessages(prev => {
                 const updated = [...prev]
@@ -94,10 +103,23 @@ export function StudentChat({ userId }: { userId: string }) {
                 return updated
               })
             }
-            // Capture sessionId returned on first message
-            if (parsed.sessionId && !sessionId) {
-              setSessionId(parsed.sessionId)
+
+            if (parsed.tool) {
+              setToolIndicators(prev => {
+                const existing = prev.findIndex(t => t.tool === parsed.tool && t.status === 'running')
+                if (parsed.status === 'done' && existing >= 0) {
+                  const updated = [...prev]
+                  updated[existing] = { ...updated[existing], status: 'done', result: parsed.result }
+                  return updated
+                }
+                if (parsed.status === 'running') {
+                  return [...prev, { tool: parsed.tool, label: parsed.label, status: 'running' }]
+                }
+                return prev
+              })
             }
+
+            if (parsed.sessionId && !sessionId) setSessionId(parsed.sessionId)
           } catch { /* ignore parse errors */ }
         }
       }
@@ -217,6 +239,28 @@ export function StudentChat({ userId }: { userId: string }) {
             </div>
           </div>
         ))}
+
+        {/* Tool indicators */}
+        {toolIndicators.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            {toolIndicators.map((t, i) => (
+              <div key={i} style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 12px', borderRadius: 'var(--rsm)',
+                background: t.status === 'done' ? 'var(--green-dim)' : 'var(--purple-dim)',
+                border: `0.5px solid ${t.status === 'done' ? 'rgba(74,222,128,.2)' : 'rgba(167,139,250,.2)'}`,
+                fontSize: 12, color: t.status === 'done' ? 'var(--green)' : 'var(--purple)',
+              }}>
+                {t.status === 'running' ? (
+                  <span style={{ opacity: 0.7 }}>⏳</span>
+                ) : (
+                  <span>✓</span>
+                )}
+                <span>{t.status === 'done' ? t.result : `${t.label}…`}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
         <div ref={bottomRef} />
       </div>

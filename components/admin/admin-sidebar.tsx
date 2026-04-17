@@ -6,6 +6,7 @@ import { SidebarPanel } from '@/components/layout/sidebar-panel'
 interface AdminSidebarProps {
   isOpen?: boolean
   onClose?: () => void
+  role?: string
 }
 
 type NavItem = { id: string; label: string; href: string; icon: React.ReactNode }
@@ -73,9 +74,17 @@ const NAV_ITEMS: NavItem[] = [
   },
 ]
 
-export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
+export function AdminSidebar({ isOpen, onClose, role = 'admin' }: AdminSidebarProps) {
   const pathname = usePathname()
   const router   = useRouter()
+
+  const isMentor = role === 'mentor'
+  const accentColor = 'var(--purple)';
+  const accentDim   = 'var(--purple-dim)';
+
+  const visibleItems = isMentor
+    ? NAV_ITEMS.filter(item => item.id === 'students')
+    : NAV_ITEMS
 
   function navigate(href: string) {
     router.push(href)
@@ -88,10 +97,10 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       <div style={{ padding: '16px 14px 12px', borderBottom: '0.5px solid var(--border)', flexShrink: 0 }}>
         <div style={{
           fontSize: 10, fontWeight: 600, letterSpacing: '.12em',
-          textTransform: 'uppercase', color: 'var(--orange)',
+          textTransform: 'uppercase', color: accentColor,
           display: 'flex', alignItems: 'center', gap: 6,
         }}>
-          <span style={{ width: 5, height: 5, background: 'var(--orange)', borderRadius: '50%', display: 'inline-block' }} />
+          <span style={{ width: 5, height: 5, background: accentColor, borderRadius: '50%', display: 'inline-block' }} />
           TNG Admin
           {onClose && (
             <button
@@ -114,7 +123,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       {/* Nav */}
       <div style={{ flex: 1, overflowY: 'auto' }}>
         <div style={{ padding: '10px 8px' }}>
-          {NAV_ITEMS.map(item => {
+          {visibleItems.map(item => {
             const isActive = item.href === '/admin'
               ? pathname === '/admin'
               : pathname.startsWith(item.href)
@@ -128,8 +137,8 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
                     padding: '7px 8px', borderRadius: 'var(--rsm)',
                     cursor: 'pointer', fontSize: 13, width: '100%',
                     border: 'none', marginBottom: 2,
-                    background: isActive ? 'var(--orange-dim)' : 'none',
-                    color: isActive ? 'var(--orange)' : 'var(--text2)',
+                    background: isActive ? accentDim : 'none',
+                    color: isActive ? accentColor : 'var(--text2)',
                     transition: 'all .12s', textAlign: 'left',
                   }}
                   onMouseEnter={e => {

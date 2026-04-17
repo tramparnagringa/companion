@@ -29,6 +29,7 @@ interface ProgramDay {
 interface Program {
   id: string
   name: string
+  slug: string
   description: string | null
   total_days: number
   is_published: boolean
@@ -48,7 +49,7 @@ const CARD_TYPE_META = {
   learn:   { label: 'Conceito', color: 'var(--blue)',   dim: 'var(--blue-dim)'   },
   ai:      { label: 'Sessão IA', color: 'var(--purple)', dim: 'var(--purple-dim)' },
   action:  { label: 'Ação',     color: 'var(--green)',  dim: 'var(--green-dim)'  },
-  reflect: { label: 'Reflexão', color: 'var(--orange)', dim: 'var(--orange-dim)' },
+  reflect: { label: 'Reflexão', color: 'var(--purple)', dim: 'var(--purple-dim)' },
 }
 
 export function ProgramEditor({ program: initial }: { program: Program }) {
@@ -61,7 +62,7 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
   const [savingDay, setSavingDay]     = useState(false)
   const [savingHeader, setSavingHeader] = useState(false)
   const [toggling, setToggling]       = useState(false)
-  const [headerForm, setHeaderForm]   = useState({ name: program.name, description: program.description ?? '' })
+  const [headerForm, setHeaderForm]   = useState({ name: program.name, slug: program.slug, description: program.description ?? '' })
 
   const currentPhase = useMemo(() => detectPhase(program.days), [program.days])
 
@@ -146,9 +147,9 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
       const res = await fetch(`/api/admin/programs/${program.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: headerForm.name, description: headerForm.description || null }),
+        body: JSON.stringify({ name: headerForm.name, slug: headerForm.slug || undefined, description: headerForm.description || null }),
       })
-      if (res.ok) setProgram(p => ({ ...p, name: headerForm.name, description: headerForm.description || null }))
+      if (res.ok) setProgram(p => ({ ...p, name: headerForm.name, slug: headerForm.slug, description: headerForm.description || null }))
     } finally {
       setSavingHeader(false)
     }
@@ -211,22 +212,39 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
           <div style={{ flexShrink: 0, paddingTop: 18 }}>
             <button onClick={saveHeader} disabled={savingHeader} style={{
               padding: '8px 16px', borderRadius: 'var(--rsm)', fontSize: 12,
-              background: 'var(--orange-dim)', color: 'var(--orange)',
-              border: '0.5px solid var(--orange)', cursor: 'pointer',
+              background: 'var(--purple-dim)', color: 'var(--purple)',
+              border: '0.5px solid var(--purple)', cursor: 'pointer',
               opacity: savingHeader ? .6 : 1,
             }}>
               {savingHeader ? '…' : 'Salvar'}
             </button>
           </div>
         </div>
-        <div style={{ marginBottom: 14 }}>
-          <label style={labelStyle}>Descrição</label>
-          <input
-            value={headerForm.description}
-            onChange={e => setHeaderForm(f => ({ ...f, description: e.target.value }))}
-            placeholder="Descrição breve"
-            style={inputStyle}
-          />
+        <div style={{ display: 'flex', gap: 12, marginBottom: 14 }}>
+          <div style={{ flex: 1 }}>
+            <label style={labelStyle}>Slug (URL)</label>
+            <div style={{ position: 'relative' }}>
+              <span style={{
+                position: 'absolute', left: 11, top: '50%', transform: 'translateY(-50%)',
+                fontSize: 12, color: 'var(--text4)', pointerEvents: 'none',
+              }}>/</span>
+              <input
+                value={headerForm.slug}
+                onChange={e => setHeaderForm(f => ({ ...f, slug: e.target.value }))}
+                placeholder="meu-programa"
+                style={{ ...inputStyle, paddingLeft: 20 }}
+              />
+            </div>
+          </div>
+          <div style={{ flex: 2 }}>
+            <label style={labelStyle}>Descrição</label>
+            <input
+              value={headerForm.description}
+              onChange={e => setHeaderForm(f => ({ ...f, description: e.target.value }))}
+              placeholder="Descrição breve"
+              style={inputStyle}
+            />
+          </div>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ fontSize: 12, color: 'var(--text3)' }}>{program.total_days} dias</div>
@@ -266,7 +284,7 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
               return (
                 <div key={d.day_number} style={{
                   background: 'var(--bg2)',
-                  border: `0.5px solid ${isOpen ? 'var(--orange)' : 'var(--border)'}`,
+                  border: `0.5px solid ${isOpen ? 'var(--purple)' : 'var(--border)'}`,
                   borderRadius: 'var(--rsm)', overflow: 'hidden', transition: 'border-color .12s',
                 }}>
                   {/* Day row */}
@@ -460,8 +478,8 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
                         <div style={{ display: 'flex', gap: 8 }}>
                           <button onClick={saveDay} disabled={savingDay} style={{
                             padding: '7px 16px', borderRadius: 'var(--rsm)', fontSize: 12, fontWeight: 500,
-                            background: 'var(--orange-dim)', color: 'var(--orange)',
-                            border: '0.5px solid var(--orange)', cursor: savingDay ? 'not-allowed' : 'pointer',
+                            background: 'var(--purple-dim)', color: 'var(--purple)',
+                            border: '0.5px solid var(--purple)', cursor: savingDay ? 'not-allowed' : 'pointer',
                             opacity: savingDay ? .6 : 1,
                           }}>
                             {savingDay ? 'Salvando…' : 'Salvar dia'}

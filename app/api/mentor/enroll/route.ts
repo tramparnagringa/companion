@@ -70,3 +70,53 @@ export async function POST(req: Request) {
 
   return Response.json({ success: true, program_name: program.name })
 }
+
+export async function PATCH(req: Request) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
+  const { data: caller } = await supabase.from('profiles').select('role').eq('id', user.id).single()
+  if (!['mentor', 'admin'].includes(caller?.role ?? '')) {
+    return new Response('Forbidden', { status: 403 })
+  }
+
+  const { enrollment_id, user_id } = await req.json() as {
+    enrollment_id: string
+    user_id: string
+  }
+
+  if (!enrollment_id || !user_id) {
+    return Response.json({ error: 'missing_fields' }, { status: 400 })
+  }
+
+  const service = createServiceClient()
+
+  const { data: enrollment } = await service
+    .from('user_programs')
+    .select('id, status, program:programs(name)')
+    .eq('id', enrollment_id)
+    .eq('user_id', user_id)
+    .single()
+
+  if (!enrollment) {
+    return Response.json({ error: 'enrollment_not_found' }, { status: 404 })
+  }
+
+  await service
+    .from('user_programs')
+    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+    .eq('id', enrollment_id)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const programName = (enrollment.program as any)?.name ?? ''
+
+  await service.from('mentor_actions').insert({
+    mentor_id: user.id,
+    target_user_id: user_id,
+    action: 'unenrollment',
+    metadata: { enrollment_id, program_name: programName },
+  })
+
+  return Response.json({ success: true, program_name: programName })
+}

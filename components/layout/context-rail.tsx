@@ -21,12 +21,12 @@ export function ContextRail({ role, user }: ContextRailProps) {
     router.push('/login')
   }
 
-  const isApp    = !pathname.startsWith('/mentor') && !pathname.startsWith('/admin')
-  const isMentor = pathname.startsWith('/mentor')
-  const isAdmin  = pathname.startsWith('/admin')
+  const isApp   = !pathname.startsWith('/admin')
+  const isAdmin = pathname.startsWith('/admin')
 
   // Active area color
-  const areaColor = isAdmin ? 'orange' : isMentor ? 'purple' : 'accent'
+  const backstageColor = 'purple';
+  const areaColor = isAdmin ? backstageColor : 'accent'
 
   const btn = (active: boolean, onClick: () => void, title: string, color: string, icon: React.ReactNode) => (
     <button
@@ -52,9 +52,9 @@ export function ContextRail({ role, user }: ContextRailProps) {
 
   // Color vars for the current area
   const COLOR_MAP: Record<string, { color: string; bg: string; border: string }> = {
-    accent: { color: 'var(--accent)', bg: 'rgba(228,253,139,.2)', border: 'rgba(228,253,139,.35)' },
-    purple: { color: 'var(--purple)', bg: 'rgba(167,139,250,.2)', border: 'rgba(167,139,250,.35)' },
-    orange: { color: 'var(--orange)', bg: 'rgba(251,146,60,.2)',  border: 'rgba(251,146,60,.35)'  },
+    accent:  { color: 'var(--accent)',  bg: 'rgba(228,253,139,.2)', border: 'rgba(228,253,139,.35)' },
+    purple:  { color: 'var(--purple)',  bg: 'rgba(167,139,250,.2)', border: 'rgba(167,139,250,.35)' },
+    orange:  { color: 'var(--orange)',  bg: 'rgba(251,146,60,.2)',  border: 'rgba(251,146,60,.35)'  },
   }
   const colors  = COLOR_MAP[areaColor]
   const initials = user ? (user.user_metadata?.full_name ?? user.email ?? '?').slice(0, 2).toUpperCase() : '?'
@@ -86,18 +86,8 @@ export function ContextRail({ role, user }: ContextRailProps) {
         </svg>
       )}
 
-      {/* Mentor — only for mentor/admin */}
-      {isMentorOrAdmin && btn(isMentor, () => router.push('/mentor'), 'Mentor', 'purple',
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 16, height: 16 }}>
-          <circle cx="6" cy="5" r="2.5" />
-          <path d="M1 13c0-2.8 2.2-5 5-5" />
-          <circle cx="12" cy="7" r="2" />
-          <path d="M10 13c0-2 1.3-3.5 3-4" />
-        </svg>
-      )}
-
-      {/* Admin — only for admin */}
-      {role === 'admin' && btn(isAdmin, () => router.push('/admin/programs'), 'Admin', 'orange',
+      {/* Admin/Mentor backstage — for mentor + admin */}
+      {isMentorOrAdmin && btn(isAdmin, () => router.push(role === 'mentor' ? '/admin/students' : '/admin'), 'Admin', backstageColor,
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 16, height: 16 }}>
           <circle cx="8" cy="8" r="2.5" />
           <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M3.2 12.8l1.4-1.4M11.4 4.6l1.4-1.4" />

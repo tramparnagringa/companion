@@ -1,10 +1,11 @@
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { ensureEnrollment } from '@/lib/programs'
+import { getActiveEnrollment } from '@/lib/programs'
 
 export default async function PlansRedirect() {
   const supabase   = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
-  const enrollment = await ensureEnrollment(user!.id, supabase)
-  redirect(`/${enrollment?.program.slug ?? 'tng-bootcamp'}/plans`)
+  const enrollment = await getActiveEnrollment(user!.id, supabase)
+  if (!enrollment) redirect('/pending')
+  redirect(`/${enrollment.program.slug}/plans`)
 }

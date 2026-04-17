@@ -24,8 +24,7 @@ function timeAgo(iso: string | null) {
 
 function roleBadge(role: string | null) {
   const map: Record<string, { label: string; color: string; bg: string }> = {
-    bootcamp: { label: 'Bootcamp', color: 'var(--accent)',  bg: 'var(--accent-dim)'  },
-    mentoria: { label: 'Mentoria', color: 'var(--purple)',  bg: 'var(--purple-dim)'  },
+    student:  { label: 'Aluno',    color: 'var(--accent)',  bg: 'var(--accent-dim)'  },
     mentor:   { label: 'Mentor',   color: 'var(--teal)',    bg: 'var(--teal-dim)'    },
     admin:    { label: 'Admin',    color: 'var(--orange)',  bg: 'var(--orange-dim)'  },
   }

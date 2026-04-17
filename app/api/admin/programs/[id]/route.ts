@@ -39,8 +39,17 @@ export async function PUT(
   const { id } = await params
   const body = await req.json() as {
     name?: string
+    slug?: string
     description?: string
     is_published?: boolean
+  }
+
+  if (body.slug !== undefined) {
+    const clean = body.slug
+      .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    if (!clean) return Response.json({ error: 'invalid_slug' }, { status: 400 })
+    body.slug = clean
   }
 
   const service = createServiceClient()

@@ -31,6 +31,7 @@ interface DayActivity {
   outputs: unknown
   completed_at: string | null
   updated_at: string | null
+  created_at: string | null
 }
 
 interface Job {
@@ -104,6 +105,12 @@ export interface Enrollment {
   }
 }
 
+export interface AvailableProgram {
+  id: string
+  name: string
+  slug: string
+}
+
 export interface StudentData {
   profile: Profile
   candidate: CandidateProfile | null
@@ -115,6 +122,7 @@ export interface StudentData {
   interviewPrep: InterviewPrep | null
   mentorActions: MentorAction[]
   enrollments: Enrollment[]
+  availablePrograms: AvailableProgram[]
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -252,32 +260,168 @@ function DashboardTab({ data }: { data: StudentData }) {
   )
 }
 
-function ProgramasTab({ data }: { data: StudentData }) {
-  const { enrollments, days } = data
+function ProgramasTab({ data, userId }: { data: StudentData; userId: string }) {
+  const { enrollments, days, availablePrograms } = data
 
   const completedCount = days.filter(d => d.status === 'done').length
 
-  if (enrollments.length === 0) {
-    return (
-      <Section title="Programas">
-        <p style={{ fontSize: 13, color: 'var(--text4)', margin: 0 }}>Nenhum programa encontrado.</p>
-      </Section>
-    )
+  const [selectedProgram, setSelectedProgram] = useState('')
+  const [enrolling, setEnrolling]             = useState(false)
+  const [enrollMessage, setEnrollMessage]     = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [localEnrollments, setLocalEnrollments] = useState(enrollments)
+  const [confirmCancel, setConfirmCancel]       = useState<string | null>(null)
+  const [cancelling, setCancelling]             = useState<Set<string>>(new Set())
+
+  async function handleCancel(enrollmentId: string) {
+    setCancelling(prev => new Set(prev).add(enrollmentId))
+    setConfirmCancel(null)
+    try {
+      const res = await fetch('/api/mentor/enroll', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enrollment_id: enrollmentId, user_id: userId }),
+      })
+      if (res.ok) {
+        setLocalEnrollments(prev =>
+          prev.map(e => e.id === enrollmentId ? { ...e, status: 'cancelled' } : e)
+        )
+      }
+    } catch {
+      // silently fail — user can reload
+    } finally {
+      setCancelling(prev => { const s = new Set(prev); s.delete(enrollmentId); return s })
+    }
+  }
+
+  const activeIds = new Set(localEnrollments.filter(e => e.status === 'active').map(e => e.program.id))
+  const unenrolled = (availablePrograms ?? []).filter(p => !activeIds.has(p.id))
+
+  const inputStyle: React.CSSProperties = {
+    width: '100%', padding: '8px 10px', borderRadius: 'var(--rsm)',
+    background: 'var(--bg3)', border: '0.5px solid var(--border2)',
+    color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+  }
+  const labelStyle: React.CSSProperties = {
+    fontSize: 11, color: 'var(--text3)', marginBottom: 4,
+    textTransform: 'uppercase', letterSpacing: '.06em', display: 'block',
+  }
+
+  async function handleEnroll(e: React.FormEvent) {
+    e.preventDefault()
+    if (!selectedProgram) return
+    setEnrolling(true)
+    setEnrollMessage(null)
+    try {
+      const res = await fetch('/api/mentor/enroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target_user_id: userId, program_id: selectedProgram }),
+      })
+      if (res.ok) {
+        const body = await res.json()
+        setEnrollMessage({ type: 'ok', text: `Inscrito em "${body.program_name}" com sucesso.` })
+        const prog = availablePrograms.find(p => p.id === selectedProgram)
+        if (prog) {
+          setLocalEnrollments(prev => [...prev, {
+            id: crypto.randomUUID(),
+            status: 'active',
+            started_at: new Date().toISOString(),
+            completed_at: null,
+            program: { id: prog.id, name: prog.name, slug: prog.slug, total_days: 30, description: null },
+          }])
+        }
+        setSelectedProgram('')
+      } else {
+        const body = await res.json()
+        const msgs: Record<string, string> = {
+          already_enrolled: 'Aluno já está inscrito neste programa.',
+          program_not_found_or_unpublished: 'Programa não encontrado ou não publicado.',
+        }
+        setEnrollMessage({ type: 'err', text: msgs[body.error] ?? body.error ?? 'Erro ao inscrever.' })
+      }
+    } catch {
+      setEnrollMessage({ type: 'err', text: 'Erro de rede.' })
+    } finally {
+      setEnrolling(false)
+    }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-      {enrollments.map(e => {
+      {/* Enroll form */}
+      {unenrolled.length > 0 && (
+        <div style={{
+          background: 'var(--bg2)', border: '0.5px solid var(--border)',
+          borderRadius: 'var(--r)', padding: '16px 20px',
+        }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: 12 }}>
+            Inscrever em programa
+          </div>
+          <form onSubmit={handleEnroll} style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label style={labelStyle}>Programa</label>
+              <select
+                required
+                value={selectedProgram}
+                onChange={e => setSelectedProgram(e.target.value)}
+                style={inputStyle}
+              >
+                <option value="">Selecionar...</option>
+                {unenrolled.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+            <button
+              type="submit" disabled={enrolling || !selectedProgram}
+              style={{
+                padding: '8px 16px', borderRadius: 'var(--rsm)', whiteSpace: 'nowrap',
+                background: enrolling || !selectedProgram ? 'var(--bg4)' : 'var(--accent-dim)',
+                color: enrolling || !selectedProgram ? 'var(--text4)' : 'var(--accent)',
+                border: `0.5px solid ${enrolling || !selectedProgram ? 'var(--border)' : 'var(--accent)'}`,
+                fontSize: 13, fontWeight: 500, cursor: enrolling || !selectedProgram ? 'not-allowed' : 'pointer',
+              }}
+            >
+              {enrolling ? 'Inscrevendo...' : 'Inscrever'}
+            </button>
+          </form>
+          {enrollMessage && (
+            <div style={{
+              marginTop: 10, padding: '8px 12px', borderRadius: 'var(--rsm)', fontSize: 13,
+              background: enrollMessage.type === 'ok' ? 'var(--green-dim)' : 'var(--red-dim)',
+              color: enrollMessage.type === 'ok' ? 'var(--green)' : 'var(--red)',
+              border: `0.5px solid ${enrollMessage.type === 'ok' ? 'var(--green)' : 'var(--red)'}`,
+            }}>
+              {enrollMessage.text}
+            </div>
+          )}
+        </div>
+      )}
+
+      {localEnrollments.length === 0 && (
+        <div style={{
+          background: 'var(--bg2)', border: '0.5px solid var(--border)',
+          borderRadius: 'var(--r)', padding: '18px 20px',
+        }}>
+          <p style={{ fontSize: 13, color: 'var(--text4)', margin: 0 }}>Nenhum programa encontrado.</p>
+        </div>
+      )}
+
+      {localEnrollments.map(e => {
         const totalDays   = e.program.total_days
         // day_activities are not yet tied per-program — use global count as approximation
         const done        = Math.min(completedCount, totalDays)
         const pct         = totalDays > 0 ? Math.round((done / totalDays) * 100) : 0
         const isCompleted = e.status === 'completed'
+        const isCancelled = e.status === 'cancelled'
+        const isActive    = e.status === 'active'
+        const isBusy      = cancelling.has(e.id)
 
         return (
           <div key={e.id} style={{
             background: 'var(--bg2)', border: '0.5px solid var(--border)',
             borderRadius: 'var(--r)', padding: '18px 20px',
+            opacity: isCancelled ? 0.6 : 1,
           }}>
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
@@ -289,11 +433,51 @@ function ProgramasTab({ data }: { data: StudentData }) {
                   <div style={{ fontSize: 12, color: 'var(--text3)' }}>{e.program.description}</div>
                 )}
               </div>
-              <Chip
-                label={isCompleted ? 'Concluído' : e.status === 'paused' ? 'Pausado' : 'Ativo'}
-                color={isCompleted ? 'var(--green)' : e.status === 'paused' ? 'var(--orange)' : 'var(--accent)'}
-                bg={isCompleted ? 'var(--green-dim)' : e.status === 'paused' ? 'var(--orange-dim)' : 'var(--accent-dim)'}
-              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Chip
+                  label={isCancelled ? 'Cancelado' : isCompleted ? 'Concluído' : e.status === 'paused' ? 'Pausado' : 'Ativo'}
+                  color={isCancelled ? 'var(--red)' : isCompleted ? 'var(--green)' : e.status === 'paused' ? 'var(--orange)' : 'var(--accent)'}
+                  bg={isCancelled ? 'var(--red-dim)' : isCompleted ? 'var(--green-dim)' : e.status === 'paused' ? 'var(--orange-dim)' : 'var(--accent-dim)'}
+                />
+                {isActive && !isBusy && confirmCancel !== e.id && (
+                  <button
+                    onClick={() => setConfirmCancel(e.id)}
+                    style={{
+                      padding: '3px 8px', borderRadius: 'var(--rsm)', fontSize: 11,
+                      background: 'transparent', color: 'var(--text4)',
+                      border: '0.5px solid var(--border2)', cursor: 'pointer',
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                )}
+                {isActive && confirmCancel === e.id && (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>Tem certeza?</span>
+                    <button
+                      onClick={() => handleCancel(e.id)}
+                      style={{
+                        padding: '3px 8px', borderRadius: 'var(--rsm)', fontSize: 11,
+                        background: 'var(--red-dim)', color: 'var(--red)',
+                        border: '0.5px solid var(--red)', cursor: 'pointer',
+                      }}
+                    >
+                      Confirmar
+                    </button>
+                    <button
+                      onClick={() => setConfirmCancel(null)}
+                      style={{
+                        padding: '3px 8px', borderRadius: 'var(--rsm)', fontSize: 11,
+                        background: 'transparent', color: 'var(--text4)',
+                        border: '0.5px solid var(--border2)', cursor: 'pointer',
+                      }}
+                    >
+                      Não
+                    </button>
+                  </div>
+                )}
+                {isBusy && <span style={{ fontSize: 11, color: 'var(--text4)' }}>Cancelando...</span>}
+              </div>
             </div>
 
             {/* Stats row */}
@@ -337,45 +521,124 @@ function ProgramasTab({ data }: { data: StudentData }) {
 }
 
 function ProgressoTab({ data }: { data: StudentData }) {
-  const { days } = data
-  const maxDay = days.length > 0 ? Math.max(...days.map(d => d.day_number)) : 30
-  const totalSlots = Math.max(maxDay, 30)
-  const all = Array.from({ length: totalSlots }, (_, i) => i + 1)
-  const statusByDay: Record<number, string> = {}
-  for (const d of days) statusByDay[d.day_number] = d.status ?? 'pending'
+  const { days, enrollments } = data
+
+  // ── Build date → activity count map ──────────────────────────────────────
+  const activityByDate: Record<string, number> = {}
+  for (const d of days) {
+    if (d.status === 'pending') continue
+    // Use completed_at if available, otherwise updated_at, otherwise created_at
+    const ts = d.completed_at ?? d.updated_at ?? d.created_at
+    if (!ts) continue
+    const date = ts.slice(0, 10) // YYYY-MM-DD
+    activityByDate[date] = (activityByDate[date] ?? 0) + 1
+  }
+
+  // ── Build 16-week calendar grid ───────────────────────────────────────────
+  const today     = new Date()
+  today.setHours(0, 0, 0, 0)
+  // Start on Sunday 16 weeks ago
+  const startDate = new Date(today)
+  startDate.setDate(today.getDate() - today.getDay() - 16 * 7)
+
+  const weeks: Date[][] = []
+  const cursor = new Date(startDate)
+  while (cursor <= today) {
+    const week: Date[] = []
+    for (let i = 0; i < 7; i++) {
+      week.push(new Date(cursor))
+      cursor.setDate(cursor.getDate() + 1)
+    }
+    weeks.push(week)
+  }
+
+  const DAYS_PT = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S']
+
+  function cellColor(count: number) {
+    if (count === 0) return { bg: 'var(--bg3)', border: 'var(--border)' }
+    if (count === 1) return { bg: 'rgba(74,222,128,0.15)', border: 'rgba(74,222,128,0.3)' }
+    return { bg: 'var(--green-dim)', border: 'var(--green)' }
+  }
+
+  // ── Earliest enrollment date for reference ────────────────────────────────
+  const enrolledSince = enrollments.length > 0
+    ? enrollments.reduce((min, e) => e.started_at < min ? e.started_at : min, enrollments[0].started_at)
+    : null
 
   return (
     <div>
-      <Section title="Heatmap">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-          {all.map(n => {
-            const status = statusByDay[n] ?? 'pending'
-            const color  = STATUS_COLORS[status] ?? 'var(--text4)'
+      <Section title="Atividade">
+        {enrolledSince && (
+          <div style={{ fontSize: 12, color: 'var(--text4)', marginBottom: 12 }}>
+            Inscrito desde {fmt(enrolledSince)}
+          </div>
+        )}
+
+        {/* Month labels */}
+        <div style={{ display: 'flex', gap: 3, marginBottom: 4, paddingLeft: 18 }}>
+          {weeks.map((week, wi) => {
+            const firstDay = week[0]
+            const showMonth = firstDay.getDate() <= 7 || wi === 0
             return (
-              <div
-                key={`heatmap-${n}`}
-                title={`Dia ${n}: ${status}`}
-                style={{
-                  width: 32, height: 32, borderRadius: 'var(--rsm)',
-                  background: status === 'done' ? 'var(--green-dim)' : status === 'in_progress' ? 'var(--accent-dim)' : 'var(--bg3)',
-                  border: `0.5px solid ${status === 'done' ? 'var(--green)' : status === 'in_progress' ? 'var(--accent)' : 'var(--border)'}`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 11, fontWeight: 500, color,
-                }}
-              >
-                {n}
+              <div key={wi} style={{ width: 14, fontSize: 9, color: 'var(--text4)', textAlign: 'center', flexShrink: 0 }}>
+                {showMonth ? firstDay.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '') : ''}
               </div>
             )
           })}
+        </div>
+
+        {/* Grid: rows = day of week, cols = weeks */}
+        <div style={{ display: 'flex', gap: 3 }}>
+          {/* Day labels */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3, marginRight: 2 }}>
+            {DAYS_PT.map((label, i) => (
+              <div key={i} style={{ width: 12, height: 14, fontSize: 9, color: 'var(--text4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {i % 2 === 1 ? label : ''}
+              </div>
+            ))}
+          </div>
+
+          {weeks.map((week, wi) => (
+            <div key={wi} style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+              {week.map((day, di) => {
+                const dateStr = day.toISOString().slice(0, 10)
+                const count   = activityByDate[dateStr] ?? 0
+                const isFuture = day > today
+                const { bg, border } = cellColor(count)
+                const label = day.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                return (
+                  <div
+                    key={di}
+                    title={isFuture ? '' : `${label}${count > 0 ? ` — ${count} atividade${count > 1 ? 's' : ''}` : ''}`}
+                    style={{
+                      width: 14, height: 14, borderRadius: 3, flexShrink: 0,
+                      background: isFuture ? 'transparent' : bg,
+                      border: isFuture ? 'none' : `0.5px solid ${border}`,
+                    }}
+                  />
+                )
+              })}
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10 }}>
+          <span style={{ fontSize: 10, color: 'var(--text4)' }}>Menos</span>
+          {[0, 1, 2].map(level => {
+            const { bg, border } = cellColor(level)
+            return <div key={level} style={{ width: 14, height: 14, borderRadius: 3, background: bg, border: `0.5px solid ${border}` }} />
+          })}
+          <span style={{ fontSize: 10, color: 'var(--text4)' }}>Mais</span>
         </div>
       </Section>
 
       <Section title="Histórico por dia">
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {days.length === 0 && (
+          {days.filter(d => d.status !== 'pending').length === 0 && (
             <p style={{ fontSize: 13, color: 'var(--text4)', margin: 0 }}>Nenhuma atividade registrada.</p>
           )}
           {[...days]
+            .filter(d => d.status !== 'pending')
             .sort((a, b) => a.day_number - b.day_number)
             .map(d => (
               <div key={`day-${d.day_number}`} style={{
@@ -811,8 +1074,8 @@ export function StudentTabs({
             </h1>
             <span style={{
               fontSize: 10, fontWeight: 500, padding: '2px 8px', borderRadius: 10,
-              background: profile.role === 'bootcamp' ? 'var(--accent-dim)' : 'var(--purple-dim)',
-              color: profile.role === 'bootcamp' ? 'var(--accent)' : 'var(--purple)',
+              background: 'var(--accent-dim)',
+              color: 'var(--accent)',
               textTransform: 'uppercase', letterSpacing: '.06em',
             }}>
               {profile.role}
@@ -866,7 +1129,7 @@ export function StudentTabs({
 
         {/* Tab content */}
         {tab === 'dashboard' && <DashboardTab data={data} />}
-        {tab === 'programas' && <ProgramasTab data={data} />}
+        {tab === 'programas' && <ProgramasTab data={data} userId={userId} />}
         {tab === 'progresso' && <ProgressoTab data={data} />}
         {tab === 'perfil'    && <PerfilTab    data={data} />}
         {tab === 'board'     && <BoardTab     data={data} />}

@@ -3,14 +3,13 @@ import { updateSession } from '@/lib/supabase/middleware'
 import { createServerClient } from '@supabase/ssr'
 import type { Database } from '@/types/database'
 
-const ALLOWED_ROLES = ['bootcamp', 'mentoria', 'mentor', 'admin']
+const ALLOWED_ROLES = ['student', 'mentor', 'admin']
 
 export async function middleware(request: NextRequest) {
   const { response, user } = await updateSession(request)
 
   const path = request.nextUrl.pathname
   const isAuthRoute    = path.startsWith('/login') || path.startsWith('/pending')
-  const isMentorRoute  = path.startsWith('/mentor')
   const isAdminRoute   = path.startsWith('/admin')
   const isApiWebhook   = path.startsWith('/api/webhooks')
   const isSignout      = path.startsWith('/auth/signout')
@@ -55,14 +54,15 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/pending', request.url))
     }
 
-    // Guard mentor routes
-    if (isMentorRoute && !['mentor', 'admin'].includes(role)) {
-      return NextResponse.redirect(new URL('/today', request.url))
-    }
-
     // Guard admin routes
-    if (isAdminRoute && role !== 'admin') {
-      return NextResponse.redirect(new URL('/today', request.url))
+    if (isAdminRoute) {
+      if (!['mentor', 'admin'].includes(role)) {
+        return NextResponse.redirect(new URL('/today', request.url))
+      }
+      // Mentors can only access /admin/students
+      if (role === 'mentor' && !path.startsWith('/admin/students') && path !== '/admin') {
+        return NextResponse.redirect(new URL('/admin/students', request.url))
+      }
     }
   }
 

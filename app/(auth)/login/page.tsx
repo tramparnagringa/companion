@@ -48,7 +48,7 @@ export default function LoginPage() {
           Bem-vindo de volta.
         </div>
         <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 28, lineHeight: 1.65 }}>
-          Acesse com sua conta Google ou LinkedIn. O acesso é liberado manualmente após a confirmação da sua vaga no bootcamp.
+          Acesse com sua conta Google ou LinkedIn. O acesso é liberado manualmente após a confirmação da sua vaga.
         </div>
 
         {error && (
