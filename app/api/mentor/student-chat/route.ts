@@ -1,13 +1,179 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// ── Tool definitions ─────────────────────────────────────────────────────────
+
+const MENTOR_TOOLS: Anthropic.Tool[] = [
+  {
+    name: 'save_action_plan',
+    description: 'Salva um plano de ação para o aluno vinculado a um enrollment específico.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        enrollment_id: { type: 'string', description: 'ID do enrollment (user_programs.id) — use os IDs listados no contexto' },
+        title:         { type: 'string', description: 'Título curto do plano' },
+        content:       { type: 'string', description: 'Conteúdo do plano em markdown' },
+      },
+      required: ['enrollment_id', 'title', 'content'],
+    },
+  },
+  {
+    name: 'grant_tokens',
+    description: 'Concede tokens ao aluno.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        tokens:        { type: 'number', description: 'Quantidade de tokens a conceder (ex: 100000)' },
+        validity_days: { type: 'number', description: 'Validade em dias (ex: 30, 90, 365)' },
+        reason:        { type: 'string', description: 'Motivo da concessão (opcional)' },
+        product_type:  { type: 'string', description: 'Tipo: manual_grant | bootcamp | mentoria | pack_starter | pack_pro' },
+      },
+      required: ['tokens', 'validity_days'],
+    },
+  },
+  {
+    name: 'enroll_in_program',
+    description: 'Enrolla o aluno em um programa publicado. Use os IDs da lista de programas disponíveis no contexto.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        program_id: { type: 'string', description: 'ID do programa (programs.id)' },
+      },
+      required: ['program_id'],
+    },
+  },
+  {
+    name: 'change_role',
+    description: 'Altera o papel/acesso do aluno na plataforma.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        role: {
+          type: 'string',
+          enum: ['pending', 'student', 'mentor', 'admin'],
+          description: 'Novo papel: pending (sem acesso), student (acesso de aluno), mentor, admin',
+        },
+      },
+      required: ['role'],
+    },
+  },
+]
+
+// ── Tool executor ─────────────────────────────────────────────────────────────
+
+const TOOL_LABELS: Record<string, string> = {
+  save_action_plan: 'Salvando plano de ação',
+  grant_tokens:     'Concedendo tokens',
+  enroll_in_program:'Enrollando no programa',
+  change_role:      'Alterando papel do aluno',
+}
+
+async function executeTool(
+  toolName: string,
+  input: Record<string, unknown>,
+  userId: string,
+  callerId: string,
+  service: SupabaseClient,
+): Promise<string> {
+  try {
+    if (toolName === 'save_action_plan') {
+      const { enrollment_id, title, content } = input as { enrollment_id: string; title: string; content: string }
+      const { error } = await service.from('action_notes').insert({
+        user_id: userId,
+        program_enrollment_id: enrollment_id,
+        title,
+        content,
+        type: 'plan',
+        checklist: [],
+        completed: false,
+      })
+      if (error) return `Erro ao salvar plano: ${error.message}`
+      await service.from('mentor_actions').insert({
+        mentor_id: callerId, target_user_id: userId,
+        action: 'action_plan_saved',
+        metadata: { enrollment_id, title },
+      })
+      return `Plano "${title}" salvo com sucesso.`
+    }
+
+    if (toolName === 'grant_tokens') {
+      const { tokens, validity_days, reason, product_type } = input as {
+        tokens: number; validity_days: number; reason?: string; product_type?: string
+      }
+      const { error } = await service.from('token_balance').insert({
+        user_id: userId,
+        tokens_total: tokens,
+        tokens_used: 0,
+        expires_at: new Date(Date.now() + validity_days * 86_400_000).toISOString(),
+        product_type: product_type ?? 'manual_grant',
+        source_payment_id: `manual_${callerId}_${Date.now()}`,
+        is_active: true,
+      })
+      if (error) return `Erro ao conceder tokens: ${error.message}`
+      await service.from('mentor_actions').insert({
+        mentor_id: callerId, target_user_id: userId,
+        action: 'token_grant',
+        metadata: { tokens, validity_days, reason: reason ?? null, product_type: product_type ?? 'manual_grant' },
+      })
+      return `${tokens.toLocaleString()} tokens concedidos com validade de ${validity_days} dias.`
+    }
+
+    if (toolName === 'enroll_in_program') {
+      const { program_id } = input as { program_id: string }
+      const { data: program } = await service.from('programs').select('id, name').eq('id', program_id).eq('is_published', true).single()
+      if (!program) return 'Programa não encontrado ou não publicado.'
+
+      const { data: existing } = await service.from('user_programs')
+        .select('id, status').eq('user_id', userId).eq('program_id', program_id).single()
+
+      if (existing?.status === 'active') return `Aluno já está enrollado em "${program.name}".`
+
+      if (existing) {
+        await service.from('user_programs').update({ status: 'active', updated_at: new Date().toISOString() }).eq('id', existing.id)
+      } else {
+        await service.from('user_programs').insert({
+          user_id: userId, program_id, status: 'active', started_at: new Date().toISOString(),
+        })
+      }
+      await service.from('mentor_actions').insert({
+        mentor_id: callerId, target_user_id: userId,
+        action: 'enrollment',
+        metadata: { program_id, program_name: program.name },
+      })
+      return `Aluno enrollado em "${program.name}" com sucesso.`
+    }
+
+    if (toolName === 'change_role') {
+      const { role } = input as { role: string }
+      const validRoles = ['pending', 'student', 'mentor', 'admin']
+      if (!validRoles.includes(role)) return `Papel inválido: ${role}`
+      const { error } = await service.from('profiles').update({ role, updated_at: new Date().toISOString() }).eq('id', userId)
+      if (error) return `Erro ao alterar papel: ${error.message}`
+      await service.from('mentor_actions').insert({
+        mentor_id: callerId, target_user_id: userId,
+        action: 'role_change',
+        metadata: { role },
+      })
+      return `Papel do aluno alterado para "${role}".`
+    }
+
+    return `Tool desconhecida: ${toolName}`
+  } catch (err) {
+    return `Erro inesperado: ${String(err)}`
+  }
+}
+
+// ── System prompt ─────────────────────────────────────────────────────────────
 
 function buildStudentSystemPrompt(student: Record<string, unknown>): string {
   const p  = student.profile  as Record<string, unknown> | null
   const c  = student.candidate as Record<string, unknown> | null
   const days = (student.days as { status: string; day_number: number }[]) ?? []
   const jobs = (student.jobs as { status: string; role_title: string; company_name: string; fit_score: number | null }[]) ?? []
-  const enrollments = (student.enrollments as { status: string; program: { name: string; total_days: number } }[]) ?? []
+  const enrollments = (student.enrollments as { id: string; status: string; program: { id: string; name: string; total_days: number } }[]) ?? []
+  const availablePrograms = (student.availablePrograms as { id: string; name: string }[]) ?? []
   const balances = (student.tokenBalances as { is_active: boolean; tokens_total: number; tokens_used: number }[]) ?? []
   const interviewPrep = student.interviewPrep as Record<string, unknown> | null
 
@@ -18,22 +184,28 @@ function buildStudentSystemPrompt(student: Record<string, unknown>): string {
   const applied       = jobs.filter(j => ['applied', 'interviewing', 'offer'].includes(j.status)).length
   const interviews    = jobs.filter(j => ['interviewing', 'offer'].includes(j.status)).length
 
-  return `Você é um analista de carreira da TNG. Você tem acesso ao perfil completo do candidato abaixo e pode ajudar mentores e admins a entender melhor esse aluno, identificar pontos de atenção, e sugerir próximos passos.
+  return `Você é um analista de carreira da TNG com poderes de ação. Você pode analisar o aluno E executar ações diretamente (salvar planos, conceder tokens, enrollar em programas, alterar papel).
 
-Seja direto e específico. Baseie suas respostas exclusivamente nos dados abaixo. Se uma informação não estiver disponível, diga claramente.
+Seja direto e específico. Baseie suas respostas nos dados abaixo. Quando executar uma ação, confirme o que foi feito.
 
 ---
 
 ## Aluno
 
 - **Nome:** ${p?.full_name ?? 'Sem nome'}
-- **Plano:** ${p?.role ?? '—'}
+- **Papel atual:** ${p?.role ?? '—'}
 - **Cadastro:** ${p?.created_at ? new Date(p.created_at as string).toLocaleDateString('pt-BR') : '—'}
 
-## Programas enrollados
+## Enrollments do aluno (use estes IDs para save_action_plan)
 
-${enrollments.length === 0 ? '- Nenhum programa encontrado.' : enrollments.map(e =>
-  `- ${e.program.name} — ${e.status} — ${completedDays}/${e.program.total_days} dias concluídos`
+${enrollments.length === 0 ? '- Nenhum enrollment encontrado.' : enrollments.map(e =>
+  `- ID: ${e.id} | Programa: ${e.program.name} | Status: ${e.status} | ${completedDays}/${e.program.total_days} dias`
+).join('\n')}
+
+## Programas disponíveis para enrollment (use estes IDs para enroll_in_program)
+
+${availablePrograms.length === 0 ? '- Nenhum programa publicado.' : availablePrograms.map(p =>
+  `- ID: ${p.id} | Nome: ${p.name}`
 ).join('\n')}
 
 ## Perfil candidato
@@ -44,7 +216,6 @@ ${!c ? '- Perfil não criado ainda.' : `
 - **Stack:** ${(c.tech_stack as string[] | null)?.join(', ') ?? '—'}
 - **Preferência:** ${c.work_preference ?? '—'} · ${(c.target_regions as string[] | null)?.join(', ') ?? '—'}
 - **Proposta de valor:** ${c.value_proposition ?? 'Não definida'}
-- **LinkedIn headline:** ${c.linkedin_headline ?? 'Não definida'}
 `.trim()}
 
 ## Progresso
@@ -54,13 +225,8 @@ ${!c ? '- Perfil não criado ainda.' : `
 
 ## Pipeline de vagas
 
-- Total analisadas: ${jobs.length}
-- Candidaturas: ${applied}
-- Entrevistas: ${interviews}
+- Total analisadas: ${jobs.length} | Candidaturas: ${applied} | Entrevistas: ${interviews}
 - Taxa de resposta: ${applied > 0 ? Math.round((interviews / applied) * 100) : 0}%
-${jobs.filter(j => j.status === 'interviewing' || j.status === 'offer').map(j =>
-  `- Em entrevista: ${j.role_title} @ ${j.company_name}${j.fit_score ? ` (fit ${j.fit_score}%)` : ''}`
-).join('\n')}
 
 ## Tokens
 
@@ -70,13 +236,12 @@ ${jobs.filter(j => j.status === 'interviewing' || j.status === 'offer').map(j =>
 ## Preparação para entrevistas
 
 ${interviewPrep?.star_stories && Array.isArray(interviewPrep.star_stories) && interviewPrep.star_stories.length > 0
-  ? `- ${interviewPrep.star_stories.length} STAR stories registradas: ${(interviewPrep.star_stories as { title: string }[]).map(s => s.title).join(', ')}`
-  : '- Nenhuma STAR story registrada ainda.'}
-${interviewPrep?.technical_gaps && Array.isArray(interviewPrep.technical_gaps) && interviewPrep.technical_gaps.length > 0
-  ? `- Gaps técnicos identificados: ${(interviewPrep.technical_gaps as string[]).join(', ')}`
-  : ''}
+  ? `- ${interviewPrep.star_stories.length} STAR stories: ${(interviewPrep.star_stories as { title: string }[]).map(s => s.title).join(', ')}`
+  : '- Nenhuma STAR story registrada.'}
 `
 }
+
+// ── Auth helper ───────────────────────────────────────────────────────────────
 
 async function getCallerOrNull(supabase: Awaited<ReturnType<typeof createServerClient>>) {
   const { data: { user } } = await supabase.auth.getUser()
@@ -86,7 +251,8 @@ async function getCallerOrNull(supabase: Awaited<ReturnType<typeof createServerC
   return user
 }
 
-// GET — load existing session messages for a student
+// ── GET — load session ────────────────────────────────────────────────────────
+
 export async function GET(req: Request) {
   const supabase = await createServerClient()
   const caller = await getCallerOrNull(supabase)
@@ -113,6 +279,8 @@ export async function GET(req: Request) {
   })
 }
 
+// ── POST — chat with tool use ─────────────────────────────────────────────────
+
 export async function POST(req: Request) {
   const supabase = await createServerClient()
   const caller = await getCallerOrNull(supabase)
@@ -123,9 +291,9 @@ export async function POST(req: Request) {
     return Response.json({ error: 'missing_params' }, { status: 400 })
   }
 
-  // Fetch student data
   const service = createServiceClient()
-  const [profileRes, candidateRes, daysRes, jobsRes, balancesRes, interviewRes, enrollmentsRes] =
+
+  const [profileRes, candidateRes, daysRes, jobsRes, balancesRes, interviewRes, enrollmentsRes, programsRes] =
     await Promise.all([
       service.from('profiles').select('id, full_name, role, created_at').eq('id', userId).single(),
       service.from('candidate_profiles').select('*').eq('user_id', userId).single(),
@@ -133,72 +301,106 @@ export async function POST(req: Request) {
       service.from('jobs').select('id, role_title, company_name, status, fit_score').eq('user_id', userId),
       service.from('token_balance').select('tokens_total, tokens_used, is_active').eq('user_id', userId).eq('is_active', true),
       service.from('interview_prep').select('star_stories, technical_gaps').eq('user_id', userId).single(),
-      service.from('user_programs').select('id, status, program:programs(name, total_days)').eq('user_id', userId),
+      service.from('user_programs').select('id, status, program:programs(id, name, total_days)').eq('user_id', userId),
+      service.from('programs').select('id, name').eq('is_published', true).order('name'),
     ])
 
   const student = {
-    profile:       profileRes.data,
-    candidate:     candidateRes.data ?? null,
-    days:          daysRes.data ?? [],
-    jobs:          jobsRes.data ?? [],
-    tokenBalances: balancesRes.data ?? [],
-    interviewPrep: interviewRes.data ?? null,
-    enrollments:   enrollmentsRes.data ?? [],
+    profile:           profileRes.data,
+    candidate:         candidateRes.data ?? null,
+    days:              daysRes.data ?? [],
+    jobs:              jobsRes.data ?? [],
+    tokenBalances:     balancesRes.data ?? [],
+    interviewPrep:     interviewRes.data ?? null,
+    enrollments:       enrollmentsRes.data ?? [],
+    availablePrograms: programsRes.data ?? [],
   }
 
   const systemPrompt = buildStudentSystemPrompt(student as Record<string, unknown>)
   const anthropic = new Anthropic()
-
-  const stream = anthropic.messages.stream({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages,
-  })
-
   const encoder = new TextEncoder()
+
   const readable = new ReadableStream({
     async start(controller) {
+      const send = (data: object) =>
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
+
+      let currentMessages: Anthropic.MessageParam[] = messages
+      let sessionSaved = false
       let assistantContent = ''
 
-      for await (const event of stream) {
-        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-          assistantContent += event.delta.text
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: event.delta.text })}\n\n`))
-        }
-        if (event.type === 'message_stop') {
-          // Save the full conversation (user messages + new assistant reply)
-          const updatedMessages = [
-            ...messages,
-            { role: 'assistant', content: assistantContent },
-          ]
+      try {
+        // Agentic loop — continues until no more tool calls
+        while (true) {
+          const response = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 2048,
+            system: systemPrompt,
+            tools: MENTOR_TOOLS,
+            messages: currentMessages,
+          })
 
-          if (sessionId) {
-            await service
-              .from('chat_sessions')
-              .update({ messages: updatedMessages, updated_at: new Date().toISOString() })
-              .eq('id', sessionId)
-          } else {
-            const { data: newSession } = await service
-              .from('chat_sessions')
-              .insert({
-                user_id: caller.id,
-                target_user_id: userId,
-                mode: 'mentor',
-                title: `Chat — ${profileRes.data?.full_name ?? userId}`,
-                messages: updatedMessages,
-              })
-              .select('id')
-              .single()
-
-            if (newSession) {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ sessionId: newSession.id })}\n\n`))
+          // Stream any text content
+          for (const block of response.content) {
+            if (block.type === 'text') {
+              assistantContent += block.text
+              // Stream word by word for a smoother feel
+              send({ text: block.text })
             }
           }
 
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'))
-          controller.close()
+          // Append assistant turn to message history
+          currentMessages = [...currentMessages, { role: 'assistant', content: response.content }]
+
+          // No tool calls — done
+          if (response.stop_reason !== 'tool_use') break
+
+          // Execute tool calls
+          const toolResults: Anthropic.ToolResultBlockParam[] = []
+          for (const block of response.content) {
+            if (block.type !== 'tool_use') continue
+
+            send({ tool: block.name, status: 'running', label: TOOL_LABELS[block.name] ?? block.name })
+
+            const result = await executeTool(
+              block.name,
+              block.input as Record<string, unknown>,
+              userId,
+              caller.id,
+              service,
+            )
+
+            send({ tool: block.name, status: 'done', result })
+            toolResults.push({ type: 'tool_result', tool_use_id: block.id, content: result })
+          }
+
+          currentMessages = [...currentMessages, { role: 'user', content: toolResults }]
         }
+
+        // Persist session
+        const finalMessages = [...messages, { role: 'assistant', content: assistantContent }]
+
+        if (sessionId) {
+          await service.from('chat_sessions')
+            .update({ messages: finalMessages, updated_at: new Date().toISOString() })
+            .eq('id', sessionId)
+        } else if (!sessionSaved) {
+          sessionSaved = true
+          const { data: newSession } = await service.from('chat_sessions').insert({
+            user_id: caller.id,
+            target_user_id: userId,
+            mode: 'mentor',
+            title: `Chat — ${profileRes.data?.full_name ?? userId}`,
+            messages: finalMessages,
+          }).select('id').single()
+
+          if (newSession) send({ sessionId: newSession.id })
+        }
+      } catch (err) {
+        console.error('[mentor/student-chat] error', err)
+      } finally {
+        send({ done: true })
+        controller.close()
       }
     },
   })

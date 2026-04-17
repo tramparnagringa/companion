@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { WEEK_THEMES, getCurrentDay } from '@/lib/days'
+import { redirect } from 'next/navigation'
 import { ensureEnrollment, getProgramDays } from '@/lib/programs'
 
 function getDayTags(cards: { type: string }[]): string[] {
@@ -17,7 +18,8 @@ export default async function DaysRedirect() {
   const supabase   = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   const enrollment = await ensureEnrollment(user!.id, supabase)
-  const totalDays = enrollment?.program.total_days ?? 30
+  if (!enrollment) redirect('/pending')
+  const totalDays = enrollment.program.total_days
 
   const [
     programDays,

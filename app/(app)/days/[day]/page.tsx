@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { ensureEnrollment, getProgramDay } from '@/lib/programs'
 import { DayPageContent } from '@/components/today/day-page-content'
@@ -13,7 +13,8 @@ export default async function DayRedirect({
   const supabase   = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   const enrollment = await ensureEnrollment(user!.id, supabase)
-  const totalDays = enrollment?.program.total_days ?? 30
+  if (!enrollment) redirect('/pending')
+  const totalDays = enrollment.program.total_days
 
   if (dayNumber > totalDays) notFound()
 

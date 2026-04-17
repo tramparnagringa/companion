@@ -8,7 +8,7 @@ async function getStudents() {
     supabase
       .from('profiles')
       .select('id, full_name, role, created_at')
-      .in('role', ['bootcamp', 'mentoria', 'mentor', 'admin'])
+      .in('role', ['student', 'mentor', 'admin'])
       .order('created_at', { ascending: false }),
     supabase.from('day_activities').select('user_id, day_number, status, updated_at'),
     supabase.from('token_balance').select('user_id, tokens_total, tokens_used, is_active, expires_at'),

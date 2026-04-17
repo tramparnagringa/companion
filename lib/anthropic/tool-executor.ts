@@ -7,7 +7,8 @@ export async function executeToolCall(
   block: Anthropic.ToolUseBlock,
   userId: string,
   supabase: SupabaseClient<Database>,
-  sessionId?: string
+  sessionId?: string,
+  programEnrollmentId?: string,
 ) {
   const input = block.input as Record<string, unknown>
 
@@ -381,12 +382,13 @@ export async function executeToolCall(
       const { data, error } = await supabase
         .from('action_notes' as any)
         .insert({
-          user_id:    userId,
-          session_id: sessionId ?? null,
-          title:      input.title      as string,
-          content:    input.content    as string,
-          type:       (input.type      as string) ?? 'note',
-          day_number: (input.day_number as number | undefined) ?? null,
+          user_id:               userId,
+          session_id:            sessionId ?? null,
+          program_enrollment_id: (input.program_enrollment_id as string | undefined) ?? programEnrollmentId ?? null,
+          title:                 input.title   as string,
+          content:               input.content as string,
+          type:                  (input.type   as string) ?? 'note',
+          day_number:            (input.day_number as number | undefined) ?? null,
           checklist,
         })
         .select()

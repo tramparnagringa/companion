@@ -1,5 +1,6 @@
+import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
-import { getAllEnrollments, ensureEnrollment } from '@/lib/programs'
+import { getAllEnrollments } from '@/lib/programs'
 import { TodayRedirectClient } from './redirect-client'
 
 export default async function TodayRedirect() {
@@ -8,11 +9,7 @@ export default async function TodayRedirect() {
   const enrollments = await getAllEnrollments(user!.id, supabase)
 
   if (enrollments.length === 0) {
-    const e = await ensureEnrollment(user!.id, supabase)
-    return <TodayRedirectClient
-      defaultSlug={e?.program.slug ?? 'tng-bootcamp'}
-      slugs={e ? [e.program.slug] : []}
-    />
+    redirect('/pending')
   }
 
   return <TodayRedirectClient

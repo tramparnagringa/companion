@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { useState, useTransition, useCallback, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { DayCard } from './day-card'
 import { completeDayActivity } from '@/app/actions/day-activity'
 import { isCardComplete } from '@/lib/days'
@@ -26,7 +25,6 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, to
   )
   const [dayDone, setDayDone] = useState(alreadyCompleted)
   const [, startTransition] = useTransition()
-  const router = useRouter()
 
   // Auto-heal: if all cards are already done in savedState but day isn't marked complete, fix it
   useEffect(() => {
@@ -35,7 +33,6 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, to
       setDayDone(true)
       startTransition(async () => {
         await completeDayActivity(dayNumber, enrollmentId)
-        router.refresh()
       })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -52,7 +49,6 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, to
       setDayDone(true)
       startTransition(async () => {
         await completeDayActivity(dayNumber, enrollmentId)
-        router.refresh()
       })
     }
   }, [allDone]) // eslint-disable-line react-hooks/exhaustive-deps

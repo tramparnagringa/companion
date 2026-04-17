@@ -264,7 +264,8 @@ Use checklist for any type='plan' or type='action_items' — each step becomes a
         title:      { type: 'string', description: 'Short descriptive title for the note' },
         content:    { type: 'string', description: 'Full content in markdown (context, rationale, notes)' },
         type:       { type: 'string', enum: ['plan', 'note', 'summary', 'action_items'], description: '"plan" for step-by-step plans, "summary" for day summaries, "action_items" for to-do lists, "note" for general insights' },
-        day_number: { type: 'number', description: 'Day number if this note is related to a specific bootcamp day' },
+        program_enrollment_id: { type: 'string', description: 'ID of the user_programs enrollment this plan belongs to (optional — inferred from context if omitted)' },
+        day_number: { type: 'number', description: 'Day number if this note is related to a specific program day (optional)' },
         checklist: {
           type: 'array',
           description: 'Ordered list of actionable steps. Required for type=plan and type=action_items.',

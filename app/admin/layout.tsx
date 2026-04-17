@@ -9,12 +9,13 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   if (!user) redirect('/login')
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-  if (profile?.role !== 'admin') redirect('/today')
+  const role = profile?.role ?? ''
+  if (!['mentor', 'admin'].includes(role)) redirect('/today')
 
   return (
     <div style={{ display: 'flex', height: '100dvh', overflow: 'hidden' }}>
-      <ContextRail role="admin" user={user} />
-      <AdminShell>{children}</AdminShell>
+      <ContextRail role={role} user={user} />
+      <AdminShell role={role}>{children}</AdminShell>
     </div>
   )
 }

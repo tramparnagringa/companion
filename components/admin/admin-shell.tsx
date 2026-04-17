@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { AdminSidebar } from './admin-sidebar'
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ children, role }: { children: React.ReactNode; role?: string }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -14,7 +14,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         onClick={() => setOpen(false)}
       />
 
-      <AdminSidebar isOpen={open} onClose={() => setOpen(false)} />
+      <AdminSidebar isOpen={open} onClose={() => setOpen(false)} role={role} />
 
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Mobile topbar */}
@@ -42,7 +42,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </button>
           <span style={{
             fontSize: 10, fontWeight: 600, letterSpacing: '.12em',
-            textTransform: 'uppercase', color: 'var(--orange)',
+            textTransform: 'uppercase', color: 'var(--purple)',
           }}>
             TNG Admin
           </span>

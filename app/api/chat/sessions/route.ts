@@ -10,6 +10,7 @@ export async function GET() {
     .from('chat_sessions')
     .select('id, title, mode, day_number, created_at, updated_at')
     .eq('user_id', user.id)
+    .is('target_user_id', null)
     .order('updated_at', { ascending: false })
     .limit(50)
 

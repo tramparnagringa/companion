@@ -66,9 +66,9 @@ export default function ProgramsPage() {
           onClick={() => setShowForm(f => !f)}
           style={{
             padding: '8px 16px', borderRadius: 'var(--rsm)', fontSize: 13, fontWeight: 500,
-            background: showForm ? 'var(--bg3)' : 'var(--orange-dim)',
-            color: showForm ? 'var(--text3)' : 'var(--orange)',
-            border: `0.5px solid ${showForm ? 'var(--border)' : 'var(--orange)'}`,
+            background: showForm ? 'var(--bg3)' : 'var(--purple-dim)',
+            color: showForm ? 'var(--text3)' : 'var(--purple)',
+            border: `0.5px solid ${showForm ? 'var(--border)' : 'var(--purple)'}`,
             cursor: 'pointer',
           }}
         >
@@ -123,9 +123,9 @@ export default function ProgramsPage() {
                 type="submit" disabled={creating || !name}
                 style={{
                   padding: '8px 18px', borderRadius: 'var(--rsm)', fontSize: 13, fontWeight: 500,
-                  background: creating || !name ? 'var(--bg4)' : 'var(--orange-dim)',
-                  color: creating || !name ? 'var(--text4)' : 'var(--orange)',
-                  border: `0.5px solid ${creating || !name ? 'var(--border)' : 'var(--orange)'}`,
+                  background: creating || !name ? 'var(--bg4)' : 'var(--purple-dim)',
+                  color: creating || !name ? 'var(--text4)' : 'var(--purple)',
+                  border: `0.5px solid ${creating || !name ? 'var(--border)' : 'var(--purple)'}`,
                   cursor: creating || !name ? 'not-allowed' : 'pointer',
                 }}
               >

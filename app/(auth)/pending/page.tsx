@@ -1,4 +1,5 @@
 import { createServerClient } from '@/lib/supabase/server'
+import { getAllEnrollments } from '@/lib/programs'
 import { redirect } from 'next/navigation'
 
 export default async function PendingPage() {
@@ -7,15 +8,16 @@ export default async function PendingPage() {
 
   if (!user) redirect('/login')
 
-  // If they somehow got access, redirect to app
+  // If they have access AND at least one enrollment, redirect to app
   const { data: profile } = await supabase
     .from('profiles')
     .select('role, full_name')
     .eq('id', user.id)
     .single()
 
-  if (profile && ['bootcamp', 'mentoria', 'mentor', 'admin'].includes(profile.role ?? '')) {
-    redirect('/today')
+  if (profile && ['student', 'mentor', 'admin'].includes(profile.role ?? '')) {
+    const enrollments = await getAllEnrollments(user.id, supabase)
+    if (enrollments.length > 0) redirect('/today')
   }
 
   const displayName = profile?.full_name ?? user.email
@@ -52,7 +54,7 @@ export default async function PendingPage() {
           Acesso pendente
         </div>
         <div style={{ fontSize: 13, color: 'var(--text2)', lineHeight: 1.7, marginBottom: 24 }}>
-          Olá, <strong style={{ color: 'var(--text)' }}>{displayName}</strong>. Sua conta foi criada com sucesso, mas o acesso ao TNG Companion é liberado manualmente após a confirmação da sua vaga no bootcamp.
+          Olá, <strong style={{ color: 'var(--text)' }}>{displayName}</strong>. Sua conta foi criada com sucesso, mas o acesso ao TNG Companion é liberado manualmente após a confirmação da sua vaga.
           <br /><br />
           Se você já confirmou, entre em contato com a equipe TNG.
         </div>

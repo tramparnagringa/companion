@@ -5,7 +5,7 @@ import { TodayCards } from '@/components/today/today-cards'
 import { DayNotes } from '@/components/today/day-notes'
 import { DAYS, WEEK_THEMES, getCurrentDay, getStreak } from '@/lib/days'
 import type { DayDefinition, CardType } from '@/lib/days'
-import { ensureEnrollment, getProgramDay } from '@/lib/programs'
+import { getProgramDay } from '@/lib/programs'
 import type { ProgramDay } from '@/lib/programs'
 import { notFound } from 'next/navigation'
 
@@ -33,14 +33,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
   let programDay = programDayProp
 
   if (programDay === undefined) {
-    const enrollment = await ensureEnrollment(user!.id, supabase)
-    if (enrollment) {
-      enrollmentId = enrollment.id
-      programId = enrollment.program_id
-      programName = enrollment.program.name
-      slug = enrollment.program.slug
-      totalDays = enrollment.program.total_days
-    }
+    // enrollment must be passed from parent — no auto-enrollment
   } else if (programDay) {
     programId = programDay.program_id
   }
