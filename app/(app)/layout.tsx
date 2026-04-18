@@ -30,9 +30,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   const activeEnrollments = enrollments
 
-  const tokenTotal = balances?.reduce((s, b) => s + b.tokens_total, 0) ?? 0
-  const tokenUsed  = balances?.reduce((s, b) => s + b.tokens_used,  0) ?? 0
-  const plan       = balances?.[0]?.product_type ?? 'student'
+  const tokenTotal  = balances?.reduce((s, b) => s + b.tokens_total, 0) ?? 0
+  const tokenUsed   = balances?.reduce((s, b) => s + b.tokens_used,  0) ?? 0
+  const plan        = balances?.[0]?.product_type ?? 'student'
+
+  // credit_ratio comes from the first active enrollment's program (display only)
+  const creditRatio  = (enrollments[0]?.program as { credit_ratio?: number | null } | undefined)?.credit_ratio ?? 10
+  const creditTotal  = Math.floor(tokenTotal / creditRatio)
+  const creditUsed   = Math.floor(tokenUsed  / creditRatio)
 
   return (
     <AppShell
@@ -45,8 +50,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         totalDays: e.program.total_days,
       }))}
       enrollmentIdsWithPlans={enrollmentIdsWithPlans}
-      tokenUsed={tokenUsed}
-      tokenTotal={tokenTotal}
+      tokenUsed={creditUsed}
+      tokenTotal={creditTotal}
       plan={plan}
     >
       {children}

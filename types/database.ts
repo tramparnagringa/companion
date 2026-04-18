@@ -613,37 +613,55 @@ export type Database = {
         Row: {
           created_at: string | null
           created_by: string | null
+          credit_ratio: number | null
           description: string | null
+          duration_days: number | null
           id: string
           is_published: boolean
           name: string
+          price_brl: number | null
           slug: string
+          token_allocation: number | null
+          token_costs: Json | null
           total_days: number
           updated_at: string | null
+          validity_days: number | null
           week_themes: Json
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
+          credit_ratio?: number | null
           description?: string | null
+          duration_days?: number | null
           id?: string
           is_published?: boolean
           name: string
+          price_brl?: number | null
           slug: string
+          token_allocation?: number | null
+          token_costs?: Json | null
           total_days?: number
           updated_at?: string | null
+          validity_days?: number | null
           week_themes?: Json
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
+          credit_ratio?: number | null
           description?: string | null
+          duration_days?: number | null
           id?: string
           is_published?: boolean
           name?: string
+          price_brl?: number | null
           slug?: string
+          token_allocation?: number | null
+          token_costs?: Json | null
           total_days?: number
           updated_at?: string | null
+          validity_days?: number | null
           week_themes?: Json
         }
         Relationships: []

@@ -4,7 +4,7 @@ import { checkTokenBalance, recordTokenUsage } from '@/lib/anthropic/check-token
 import { buildSystemPrompt, getDayModelConfig } from '@/lib/anthropic/system-prompts'
 import { ALL_TOOLS } from '@/lib/anthropic/tools'
 import { executeToolCall } from '@/lib/anthropic/tool-executor'
-import { TOKEN_COSTS } from '@/lib/tokens'
+import { resolveTokenCost } from '@/lib/tokens'
 import { getActiveEnrollment, getDayForUser, getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
 
 export async function POST(req: Request) {
@@ -29,7 +29,18 @@ export async function POST(req: Request) {
     slug      = body.slug as string | undefined
     sessionId = body.sessionId as string | undefined
 
-    const cost = mode === 'mentor' ? TOKEN_COSTS.mentor_message : TOKEN_COSTS.cv_rewrite ?? TOKEN_COSTS.chat_message
+    let programTokenCosts: Record<string, number> | null = null
+    if (slug) {
+      const { data: progConfig } = await supabase
+        .from('programs')
+        .select('token_costs')
+        .eq('slug', slug)
+        .single()
+      programTokenCosts = progConfig?.token_costs as Record<string, number> | null
+    }
+
+    const interactionKey = mode === 'mentor' ? 'mentor_message' : mode === 'cv' ? 'cv_rewrite' : 'chat_message'
+    const cost = resolveTokenCost(interactionKey, programTokenCosts)
     const { allowed } = await checkTokenBalance(userId, cost)
     if (!allowed) {
       return Response.json({ error: 'token_limit_reached' }, { status: 402 })

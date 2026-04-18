@@ -40,8 +40,14 @@ export async function PUT(
   const body = await req.json() as {
     name?: string
     slug?: string
-    description?: string
+    description?: string | null
     is_published?: boolean
+    token_allocation?: number | null
+    credit_ratio?: number | null
+    token_costs?: Record<string, number> | null
+    price_brl?: number | null
+    duration_days?: number | null
+    validity_days?: number | null
   }
 
   if (body.slug !== undefined) {

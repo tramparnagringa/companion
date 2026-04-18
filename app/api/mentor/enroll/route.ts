@@ -22,16 +22,15 @@ export async function POST(req: Request) {
 
   const service = createServiceClient()
 
-  // Check program exists and is published
+  // Check program exists (admin can enroll in any program, published or not)
   const { data: program } = await service
     .from('programs')
-    .select('id, name')
+    .select('id, name, slug')
     .eq('id', program_id)
-    .eq('is_published', true)
     .single()
 
   if (!program) {
-    return Response.json({ error: 'program_not_found_or_unpublished' }, { status: 404 })
+    return Response.json({ error: 'program_not_found' }, { status: 404 })
   }
 
   // Check if already enrolled
@@ -41,6 +40,8 @@ export async function POST(req: Request) {
     .eq('user_id', target_user_id)
     .eq('program_id', program_id)
     .single()
+
+  let isNewEnrollment = false
 
   if (existing) {
     if (existing.status === 'active') {
@@ -58,6 +59,29 @@ export async function POST(req: Request) {
       status: 'active',
       started_at: new Date().toISOString(),
     })
+    isNewEnrollment = true
+  }
+
+  // Auto-grant tokens on new enrollment if program has token_allocation configured
+  if (isNewEnrollment) {
+    const { data: tokenConfig } = await service
+      .from('programs')
+      .select('token_allocation, validity_days')
+      .eq('id', program_id)
+      .single()
+
+    if (tokenConfig?.token_allocation && tokenConfig?.validity_days) {
+      const expiresAt = new Date(Date.now() + tokenConfig.validity_days * 86_400_000)
+      await service.from('token_balance').insert({
+        user_id: target_user_id,
+        tokens_total: tokenConfig.token_allocation,
+        tokens_used: 0,
+        expires_at: expiresAt.toISOString(),
+        product_type: program.slug,
+        source_payment_id: `enrollment_auto_${target_user_id}_${Date.now()}`,
+        is_active: true,
+      })
+    }
   }
 
   // Log mentor action
