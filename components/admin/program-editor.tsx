@@ -33,6 +33,11 @@ interface Program {
   description: string | null
   total_days: number
   is_published: boolean
+  token_allocation: number | null
+  credit_ratio: number | null
+  price_brl: number | null
+  duration_days: number | null
+  validity_days: number | null
   days: ProgramDay[]
 }
 
@@ -62,7 +67,16 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
   const [savingDay, setSavingDay]     = useState(false)
   const [savingHeader, setSavingHeader] = useState(false)
   const [toggling, setToggling]       = useState(false)
-  const [headerForm, setHeaderForm]   = useState({ name: program.name, slug: program.slug, description: program.description ?? '' })
+  const [headerForm, setHeaderForm]   = useState({
+    name: program.name,
+    slug: program.slug,
+    description: program.description ?? '',
+    token_allocation: program.token_allocation ?? '',
+    credit_ratio: program.credit_ratio ?? 10,
+    price_brl: program.price_brl ?? '',
+    duration_days: program.duration_days ?? '',
+    validity_days: program.validity_days ?? '',
+  })
 
   const currentPhase = useMemo(() => detectPhase(program.days), [program.days])
 
@@ -147,9 +161,28 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
       const res = await fetch(`/api/admin/programs/${program.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: headerForm.name, slug: headerForm.slug || undefined, description: headerForm.description || null }),
+        body: JSON.stringify({
+          name: headerForm.name,
+          slug: headerForm.slug || undefined,
+          description: headerForm.description || null,
+          token_allocation: headerForm.token_allocation !== '' ? Number(headerForm.token_allocation) : null,
+          credit_ratio: Number(headerForm.credit_ratio) || 10,
+          price_brl: headerForm.price_brl !== '' ? Number(headerForm.price_brl) : null,
+          duration_days: headerForm.duration_days !== '' ? Number(headerForm.duration_days) : null,
+          validity_days: headerForm.validity_days !== '' ? Number(headerForm.validity_days) : null,
+        }),
       })
-      if (res.ok) setProgram(p => ({ ...p, name: headerForm.name, slug: headerForm.slug, description: headerForm.description || null }))
+      if (res.ok) setProgram(p => ({
+        ...p,
+        name: headerForm.name,
+        slug: headerForm.slug,
+        description: headerForm.description || null,
+        token_allocation: headerForm.token_allocation !== '' ? Number(headerForm.token_allocation) : null,
+        credit_ratio: Number(headerForm.credit_ratio) || 10,
+        price_brl: headerForm.price_brl !== '' ? Number(headerForm.price_brl) : null,
+        duration_days: headerForm.duration_days !== '' ? Number(headerForm.duration_days) : null,
+        validity_days: headerForm.validity_days !== '' ? Number(headerForm.validity_days) : null,
+      }))
     } finally {
       setSavingHeader(false)
     }
@@ -246,6 +279,86 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
             />
           </div>
         </div>
+        {/* Token config */}
+        <div style={{
+          borderTop: '0.5px solid var(--border)', marginTop: 4, paddingTop: 14, marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 10 }}>
+            Configuração de Tokens
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <label style={labelStyle}>Alocação (tokens reais)</label>
+              <input
+                type="number" min="0" step="10000"
+                value={headerForm.token_allocation}
+                onChange={e => setHeaderForm(f => ({ ...f, token_allocation: e.target.value }))}
+                placeholder="ex: 250000"
+                style={inputStyle}
+              />
+              {headerForm.token_allocation !== '' && (
+                <div style={{ fontSize: 10, color: 'var(--text4)', marginTop: 3 }}>
+                  = {Math.floor(Number(headerForm.token_allocation) / (Number(headerForm.credit_ratio) || 10)).toLocaleString('pt-BR')} créditos
+                </div>
+              )}
+            </div>
+            <div>
+              <label style={labelStyle}>Razão de créditos (display)</label>
+              <input
+                type="number" min="1" step="1"
+                value={headerForm.credit_ratio}
+                onChange={e => setHeaderForm(f => ({ ...f, credit_ratio: Number(e.target.value) || 10 }))}
+                placeholder="10"
+                style={inputStyle}
+              />
+              <div style={{ fontSize: 10, color: 'var(--text4)', marginTop: 3 }}>tokens ÷ ratio = créditos exibidos</div>
+            </div>
+            <div>
+              <label style={labelStyle}>Preço (R$)</label>
+              <input
+                type="number" min="0" step="0.01"
+                value={headerForm.price_brl}
+                onChange={e => setHeaderForm(f => ({ ...f, price_brl: e.target.value }))}
+                placeholder="ex: 97.00"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div>
+              <label style={labelStyle}>Duração real (dias)</label>
+              <input
+                type="number" min="1" step="1"
+                value={headerForm.duration_days}
+                onChange={e => {
+                  const d = Number(e.target.value)
+                  const suggested = d <= 7 ? 30 : 365
+                  setHeaderForm(f => ({
+                    ...f,
+                    duration_days: e.target.value,
+                    validity_days: f.validity_days === '' ? suggested : f.validity_days,
+                  }))
+                }}
+                placeholder="ex: 7"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Validade do token (dias)</label>
+              <input
+                type="number" min="1" step="1"
+                value={headerForm.validity_days}
+                onChange={e => setHeaderForm(f => ({ ...f, validity_days: e.target.value }))}
+                placeholder="ex: 30"
+                style={inputStyle}
+              />
+              <div style={{ fontSize: 10, color: 'var(--text4)', marginTop: 3 }}>
+                Sugerido: ≤7d → 30 dias · ≤30d → 365 dias
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ fontSize: 12, color: 'var(--text3)' }}>{program.total_days} dias</div>
           <button onClick={togglePublish} disabled={toggling} style={{
@@ -425,7 +538,7 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
                                       value={card.title}
                                       onChange={e => updateCard(i, 'title', e.target.value)}
                                       placeholder="Título do card"
-                                      style={{ ...inputStyle, flex: 1, padding: '5px 9px', fontSize: 12 }}
+                                      style={{ ...inputStyle, flex: 1, padding: '5px 9px', fontSize: 13 }}
                                     />
                                     {/* Move up/down */}
                                     <button onClick={() => moveCard(i, -1)} disabled={i === 0}
@@ -441,11 +554,11 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
                                       <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 11, height: 11 }}><line x1="2" y1="2" x2="10" y2="10" /><line x1="10" y1="2" x2="2" y2="10" /></svg>
                                     </button>
                                   </div>
-                                  <input
+                                  <textarea
                                     value={card.description}
                                     onChange={e => updateCard(i, 'description', e.target.value)}
-                                    placeholder="Descrição do card — o que o aluno faz"
-                                    style={{ ...inputStyle, padding: '5px 9px', fontSize: 12 }}
+                                    placeholder="Descrição do card — suporta markdown (parágrafos, **negrito**, listas…)"
+                                    style={{ ...inputStyle, padding: '5px 9px', fontSize: 13, resize: 'vertical', minHeight: 72, lineHeight: 1.55 }}
                                   />
                                 </div>
                               )

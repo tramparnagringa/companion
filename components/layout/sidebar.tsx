@@ -296,7 +296,7 @@ export function Sidebar({
         padding: '12px 13px',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--text3)' }}>Tokens</span>
+          <span style={{ fontSize: 11, color: 'var(--text3)' }}>Créditos</span>
           <span style={{
             fontSize: 10, fontWeight: 500, color: 'var(--accent)',
             background: 'var(--accent-dim)', padding: '2px 7px', borderRadius: 8, cursor: 'pointer',
@@ -312,8 +312,8 @@ export function Sidebar({
           }} />
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-          <span>{(tokenTotal - tokenUsed).toLocaleString()} restantes</span>
-          <span>{tokenTotal.toLocaleString()}</span>
+          <span>{(tokenTotal - tokenUsed).toLocaleString('pt-BR')} restantes</span>
+          <span>{tokenTotal.toLocaleString('pt-BR')}</span>
         </div>
       </div>
 

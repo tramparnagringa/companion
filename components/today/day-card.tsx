@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useTransition, useEffect } from 'react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { saveCardState } from '@/app/actions/day-activity'
 import type { DayCard as DayCardType } from '@/lib/days'
 import { isCardComplete } from '@/lib/days'
@@ -155,20 +157,31 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
         <div style={{ borderTop: '0.5px solid var(--border)', padding: '0 17px 16px' }}>
           {/* Content blocks */}
           {card.content.length > 0 && (
-            <div style={{ paddingTop: 14, fontSize: 13, color: 'var(--text2)', lineHeight: 1.7 }}>
+            <div style={{ paddingTop: 14, color: 'var(--text2)', lineHeight: 1.7 }}>
               {card.content.map((block, i) => (
                 <div key={i}>
                   {block.heading && (
                     <div style={{
-                      fontSize: 12, fontWeight: 500, color: 'var(--text)',
-                      margin: i === 0 ? '0 0 6px' : '12px 0 6px',
+                      fontSize: 13, fontWeight: 600, color: 'var(--text)',
+                      margin: i === 0 ? '0 0 8px' : '16px 0 8px',
                     }}>
                       {block.heading}
                     </div>
                   )}
-                  {block.body.split('\n').filter(Boolean).map((para, j) => (
-                    <p key={j} style={{ marginBottom: 8 }}>{para}</p>
-                  ))}
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      p:      ({ children }) => <p style={{ fontSize: 16, marginBottom: 10 }}>{children}</p>,
+                      strong: ({ children }) => <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{children}</strong>,
+                      em:     ({ children }) => <em style={{ color: 'var(--text)' }}>{children}</em>,
+                      ul:     ({ children }) => <ul style={{ paddingLeft: 20, marginBottom: 10 }}>{children}</ul>,
+                      ol:     ({ children }) => <ol style={{ paddingLeft: 20, marginBottom: 10 }}>{children}</ol>,
+                      li:     ({ children }) => <li style={{ fontSize: 16, marginBottom: 4 }}>{children}</li>,
+                      a:      ({ href, children }) => <a href={href} style={{ color: 'var(--accent)', textDecoration: 'underline' }}>{children}</a>,
+                    }}
+                  >
+                    {block.body}
+                  </ReactMarkdown>
                 </div>
               ))}
             </div>
@@ -216,19 +229,9 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
 
             {/* Right: CTA */}
             {card.type === 'learn' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <a
-                  href={`/chat?day=${dayNumber}${slug ? `&slug=${slug}` : ''}&prompt=${encodeURIComponent(`Quero aprofundar o tema do Dia ${dayNumber}: "${card.title}". ${card.content[0]?.body ?? ''}`)}`}
-                  style={aiLinkStyle}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = '.75')}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                >
-                  ✦ Aprofundar com IA
-                </a>
-                <button onClick={toggleRead} style={read ? doneBtnStyle : idleBtnStyle}>
-                  {read ? '✓ Lido' : 'Marcar como lido'}
-                </button>
-              </div>
+              <button onClick={toggleRead} style={read ? doneBtnStyle : idleBtnStyle}>
+                {read ? '✓ Lido' : 'Marcar como lido'}
+              </button>
             )}
 
             {(card.type === 'ai' || card.type === 'action') && (

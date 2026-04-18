@@ -109,6 +109,7 @@ export interface AvailableProgram {
   id: string
   name: string
   slug: string
+  is_published?: boolean
 }
 
 export interface StudentData {
@@ -335,7 +336,8 @@ function ProgramasTab({ data, userId }: { data: StudentData; userId: string }) {
         const body = await res.json()
         const msgs: Record<string, string> = {
           already_enrolled: 'Aluno já está inscrito neste programa.',
-          program_not_found_or_unpublished: 'Programa não encontrado ou não publicado.',
+          program_not_found: 'Programa não encontrado.',
+          program_not_found_or_unpublished: 'Programa não encontrado.',
         }
         setEnrollMessage({ type: 'err', text: msgs[body.error] ?? body.error ?? 'Erro ao inscrever.' })
       }
@@ -368,7 +370,9 @@ function ProgramasTab({ data, userId }: { data: StudentData; userId: string }) {
               >
                 <option value="">Selecionar...</option>
                 {unenrolled.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
+                  <option key={p.id} value={p.id}>
+                    {p.name}{p.is_published === false ? ' (rascunho)' : ''}
+                  </option>
                 ))}
               </select>
             </div>

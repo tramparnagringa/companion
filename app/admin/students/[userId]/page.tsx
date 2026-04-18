@@ -23,7 +23,7 @@ async function getStudentData(userId: string): Promise<StudentData | null> {
     supabase.from('interview_prep').select('star_stories, technical_gaps, performance_map').eq('user_id', userId).single(),
     supabase.from('mentor_actions').select('id, action, metadata, created_at').eq('target_user_id', userId).order('created_at', { ascending: false }),
     supabase.from('user_programs').select('id, status, started_at, completed_at, program:programs(id, name, slug, total_days, description)').eq('user_id', userId).order('started_at'),
-    supabase.from('programs').select('id, name, slug').eq('is_published', true).order('name'),
+    supabase.from('programs').select('id, name, slug, is_published').order('name'),
   ])
 
   if (!profileRes.data) return null

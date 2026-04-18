@@ -36,57 +36,43 @@ export default async function ProgramDaysPage({
   const programDays = await getProgramDays(enrollment.program_id, supabase)
   const numWeeks    = programDays.length > 0 ? Math.max(...programDays.map(d => d.week_number)) : 4
 
-  const [
-    { data: activities },
-    { count: totalApplied },
-    { count: responded },
-    { count: keywordCount },
-  ] = await Promise.all([
-    supabase.from('day_activities').select('day_number, status')
-      .eq('user_id', user!.id).eq('program_enrollment_id', enrollment.id),
-    supabase.from('jobs').select('*', { count: 'exact', head: true })
-      .eq('user_id', user!.id).not('applied_at', 'is', null),
-    supabase.from('jobs').select('*', { count: 'exact', head: true })
-      .eq('user_id', user!.id).in('status', ['interviewing', 'offer']),
-    supabase.from('keywords').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
-  ])
+  const { data: activities } = await supabase
+    .from('day_activities').select('day_number, status')
+    .eq('user_id', user!.id).eq('program_enrollment_id', enrollment.id)
 
   const allActivities       = activities ?? []
   const completedDayNumbers = allActivities.filter(a => a.status === 'done').map(a => a.day_number)
   const currentDay          = getCurrentDay(completedDayNumbers, totalDays)
   const statusMap           = new Map(allActivities.map(a => [a.day_number, a.status]))
 
-  const doneCount     = completedDayNumbers.length
-  const appliedCount  = totalApplied ?? 0
-  const responseRate  = appliedCount > 0 ? Math.round(((responded ?? 0) / appliedCount) * 100) : null
-  const kwCount       = keywordCount ?? 0
-  const weeks         = Array.from({ length: numWeeks }, (_, i) => i + 1)
+  const doneCount = completedDayNumbers.length
+  const weeks     = Array.from({ length: numWeeks }, (_, i) => i + 1)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       <Topbar title={enrollment.program.name} subtitle={`${totalDays} dias · ${numWeeks} semanas`} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
 
-        {/* Stats */}
-        <div style={{
-          display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: 10, marginBottom: 22,
-        }}>
-          {[
-            { label: 'Dias concluídos', value: doneCount,    sub: `de ${totalDays}`,    color: 'var(--accent)' },
-            { label: 'Aplicações',      value: appliedCount, sub: 'meta: 1/dia',         color: 'var(--green)' },
-            { label: 'Taxa resposta',   value: responseRate !== null ? `${responseRate}%` : '—', sub: appliedCount === 0 ? 'cedo demais' : 'respostas', color: 'var(--orange)' },
-            { label: 'Keywords',        value: kwCount,      sub: 'no banco',            color: 'var(--purple)' },
-          ].map(({ label, value, sub, color }) => (
-            <div key={label} style={{
-              background: 'var(--bg2)', border: '0.5px solid var(--border)',
-              borderRadius: 'var(--r)', padding: '14px 16px',
-            }}>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 5 }}>{label}</div>
-              <div style={{ fontSize: 26, fontWeight: 500, fontFamily: 'var(--mono)', color }}>{value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 3 }}>{sub}</div>
-            </div>
-          ))}
+        {/* Progress */}
+        <div style={{ marginBottom: 22 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
+            <span style={{ fontSize: 12, color: 'var(--text3)' }}>
+              Dia {currentDay} de {totalDays}
+              {doneCount > 0 && (
+                <span style={{ marginLeft: 8, color: 'var(--text4)' }}>· {doneCount} concluído{doneCount !== 1 ? 's' : ''}</span>
+              )}
+            </span>
+            <span style={{ fontSize: 11, fontFamily: 'var(--mono)', color: 'var(--accent)' }}>
+              {Math.round((doneCount / totalDays) * 100)}%
+            </span>
+          </div>
+          <div style={{ height: 3, background: 'var(--bg4)', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{
+              height: '100%', borderRadius: 2,
+              width: `${(doneCount / totalDays) * 100}%`,
+              background: 'var(--accent)', transition: 'width .4s',
+            }} />
+          </div>
         </div>
 
         {weeks.map(week => {
