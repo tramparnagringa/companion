@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
 
 const anthropic = new Anthropic()
 
@@ -119,6 +120,11 @@ REGRAS:
             controller.enqueue(encoder.encode('data: [DONE]\n\n'))
           }
         }
+
+        const finalMsg = await stream.finalMessage()
+        const input  = finalMsg.usage.input_tokens
+        const output = finalMsg.usage.output_tokens
+        await recordTokenUsage(user.id, input + output, 'mentor_chat', {}, 'claude-sonnet-4-6', input, output)
       } catch (err) {
         console.error('[mentor/chat] stream error', err)
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))

@@ -32,7 +32,16 @@ export function PlanCard({ id, title, content, type, dayNumber, checklist: initi
   const [checklist, setChecklist] = useState<ChecklistItem[]>(initial)
   const [completed, setCompleted] = useState(initialCompleted)
   const [expanded, setExpanded] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleted, setDeleted] = useState(false)
   const [, startTransition] = useTransition()
+
+  async function deleteNote() {
+    await fetch(`/api/plans/${id}`, { method: 'DELETE' })
+    setDeleted(true)
+  }
+
+  if (deleted) return null
 
   const meta = TYPE_LABELS[type] ?? TYPE_LABELS.note
   const doneCount = checklist.filter(i => i.done).length
@@ -77,68 +86,111 @@ export function PlanCard({ id, title, content, type, dayNumber, checklist: initi
       transition: 'border-color .2s',
     }}>
       {/* Header */}
-      <button
-        onClick={() => setExpanded(v => !v)}
-        style={{
-          display: 'flex', alignItems: 'flex-start', gap: 12,
-          width: '100%', padding: '14px 16px',
-          background: 'none', border: 'none', cursor: 'pointer',
-          textAlign: 'left',
-        }}
-      >
-        {/* Progress ring */}
-        {total > 0 && (
-          <svg width={36} height={36} viewBox="0 0 36 36" style={{ flexShrink: 0 }}>
-            <circle cx={18} cy={18} r={14} fill="none" stroke="var(--bg4)" strokeWidth={3} />
-            <circle
-              cx={18} cy={18} r={14} fill="none"
-              stroke={allDone ? '#4ade80' : meta.color}
-              strokeWidth={3}
-              strokeDasharray={`${(pct / 100) * 2 * Math.PI * 14} ${2 * Math.PI * 14}`}
-              strokeLinecap="round"
-              transform="rotate(-90 18 18)"
-              style={{ transition: 'stroke-dasharray .4s ease' }}
-            />
-            <text x={18} y={22} textAnchor="middle" fontSize={9} fontWeight={700}
-              fill={allDone ? '#4ade80' : meta.color}>
-              {pct}%
-            </text>
-          </svg>
-        )}
-
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
-            <span style={{
-              fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10,
-              background: meta.color + '18', color: meta.color,
-              border: `0.5px solid ${meta.color}33`,
-            }}>
-              {meta.label}
-            </span>
-            {dayNumber && (
-              <span style={{ fontSize: 10, color: 'var(--text4)' }}>Dia {dayNumber}</span>
-            )}
-            <span style={{ fontSize: 10, color: 'var(--text4)', marginLeft: 'auto' }}>{date}</span>
-          </div>
-          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>
-            {title}
-          </div>
+      <div style={{ position: 'relative' }}>
+        {/* Expand area — no buttons inside */}
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setExpanded(v => !v)}
+          onKeyDown={e => e.key === 'Enter' && setExpanded(v => !v)}
+          style={{
+            display: 'flex', alignItems: 'flex-start', gap: 12,
+            width: '100%', padding: '14px 16px', paddingRight: 44,
+            cursor: 'pointer', textAlign: 'left',
+          }}
+        >
+          {/* Progress ring */}
           {total > 0 && (
-            <div style={{ fontSize: 11, color: 'var(--text4)', marginTop: 4 }}>
-              {doneCount}/{total} concluídos
-            </div>
+            <svg width={36} height={36} viewBox="0 0 36 36" style={{ flexShrink: 0 }}>
+              <circle cx={18} cy={18} r={14} fill="none" stroke="var(--bg4)" strokeWidth={3} />
+              <circle
+                cx={18} cy={18} r={14} fill="none"
+                stroke={allDone ? '#4ade80' : meta.color}
+                strokeWidth={3}
+                strokeDasharray={`${(pct / 100) * 2 * Math.PI * 14} ${2 * Math.PI * 14}`}
+                strokeLinecap="round"
+                transform="rotate(-90 18 18)"
+                style={{ transition: 'stroke-dasharray .4s ease' }}
+              />
+              <text x={18} y={22} textAnchor="middle" fontSize={9} fontWeight={700}
+                fill={allDone ? '#4ade80' : meta.color}>
+                {pct}%
+              </text>
+            </svg>
           )}
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+              <span style={{
+                fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 10,
+                background: meta.color + '18', color: meta.color,
+                border: `0.5px solid ${meta.color}33`,
+              }}>
+                {meta.label}
+              </span>
+              {dayNumber && (
+                <span style={{ fontSize: 10, color: 'var(--text4)' }}>Dia {dayNumber}</span>
+              )}
+              <span style={{ fontSize: 10, color: 'var(--text4)', marginLeft: 'auto' }}>{date}</span>
+            </div>
+            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', lineHeight: 1.4 }}>
+              {title}
+            </div>
+            {total > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--text4)', marginTop: 4 }}>
+                {doneCount}/{total} concluídos
+              </div>
+            )}
+          </div>
+
+          {/* Chevron */}
+          <svg
+            width={14} height={14} viewBox="0 0 14 14" fill="none"
+            stroke="var(--text4)" strokeWidth={1.5}
+            style={{ flexShrink: 0, transition: 'transform .2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', marginTop: 2 }}
+          >
+            <polyline points="2,5 7,9 12,5" />
+          </svg>
         </div>
 
-        {/* Chevron */}
-        <svg
-          width={14} height={14} viewBox="0 0 14 14" fill="none"
-          stroke="var(--text4)" strokeWidth={1.5}
-          style={{ flexShrink: 0, transition: 'transform .2s', transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)', marginTop: 2 }}
-        >
-          <polyline points="2,5 7,9 12,5" />
-        </svg>
-      </button>
+        {/* Delete — absolute, outside the expand div */}
+        <div style={{ position: 'absolute', top: 12, right: 12, zIndex: 1 }}>
+          {confirmDelete ? (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ fontSize: 10, color: 'var(--text3)' }}>Remover?</span>
+              <button onClick={deleteNote} style={{
+                fontSize: 10, fontWeight: 600, color: '#f87171',
+                background: 'rgba(248,113,113,.1)', border: '0.5px solid rgba(248,113,113,.3)',
+                borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+              }}>Sim</button>
+              <button onClick={() => setConfirmDelete(false)} style={{
+                fontSize: 10, color: 'var(--text4)',
+                background: 'var(--bg4)', border: '0.5px solid var(--border2)',
+                borderRadius: 4, padding: '2px 8px', cursor: 'pointer',
+              }}>Não</button>
+            </span>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              title="Remover plano"
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: 'var(--text4)', padding: 4, borderRadius: 4,
+                display: 'flex', alignItems: 'center',
+                opacity: 0.4, transition: 'opacity .15s',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+              onMouseLeave={e => (e.currentTarget.style.opacity = '0.4')}
+            >
+              <svg width={12} height={12} viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth={1.5}>
+                <polyline points="1,3 11,3" />
+                <path d="M2,3 L2.5,10.5 Q2.5,11 3,11 H9 Q9.5,11 9.5,10.5 L10,3" />
+                <path d="M4.5,3 L4.5,1.5 Q4.5,1 5,1 H7 Q7.5,1 7.5,1.5 L7.5,3" />
+              </svg>
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Body */}
       {expanded && (

@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: balances }, enrollments, { data: actionNotes }] = await Promise.all([
+  const [{ data: profile }, { data: balances }, enrollments, { count: plansCount }] = await Promise.all([
     supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase
       .from('token_balance')
@@ -18,15 +18,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .eq('is_active', true)
       .gt('expires_at', new Date().toISOString()),
     getAllEnrollments(user.id, supabase),
-    supabase.from('action_notes').select('program_enrollment_id')
-      .eq('user_id', user.id)
-      .in('type', ['plan', 'action_items'])
-      .not('program_enrollment_id', 'is', null),
+    (supabase as any)
+      .from('action_notes')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id),
   ])
-
-  const enrollmentIdsWithPlans = [...new Set(
-    (actionNotes ?? []).map(n => n.program_enrollment_id).filter(Boolean) as string[]
-  )]
 
   const activeEnrollments = enrollments
 
@@ -49,7 +45,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         name: e.program.name,
         totalDays: e.program.total_days,
       }))}
-      enrollmentIdsWithPlans={enrollmentIdsWithPlans}
+      hasPlans={(plansCount ?? 0) > 0}
       tokenUsed={creditUsed}
       tokenTotal={creditTotal}
       plan={plan}

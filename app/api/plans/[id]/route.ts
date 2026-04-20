@@ -1,5 +1,24 @@
 import { createServerClient } from '@/lib/supabase/server'
 
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
+  const { id } = await params
+  const { error } = await (supabase as any)
+    .from('action_notes')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) return Response.json({ error: error.message }, { status: 500 })
+  return Response.json({ success: true })
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: Promise<{ id: string }> }

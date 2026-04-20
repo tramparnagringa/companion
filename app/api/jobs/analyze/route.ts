@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { anthropic } from '@/lib/anthropic/client'
 import { updateJob } from '@/app/actions/jobs'
+import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
 
 export async function POST(req: Request) {
   const supabase = await createServerClient()
@@ -77,6 +78,16 @@ Analyze fit and respond with this exact JSON:
 
   // Only advance to 'analysing' if still in 'to_analyse' — never override further stages
   const nextStatus = current?.status === 'to_analyse' ? 'analysing' : undefined
+
+  await recordTokenUsage(
+    user.id,
+    message.usage.input_tokens + message.usage.output_tokens,
+    'job_analysis',
+    { job_id: jobId },
+    'claude-sonnet-4-6',
+    message.usage.input_tokens,
+    message.usage.output_tokens,
+  )
 
   // Persist via updateJob so status_log is recorded correctly
   const updated = await updateJob(jobId, {

@@ -58,7 +58,7 @@ async function seed() {
 
   // ── 2. Upsert program_days ─────────────────────────────────────────────────
   const programDays = DAYS.map((day) => {
-    const modelConfig = getDayModelConfig('task', day.number)
+    const modelConfig = getDayModelConfig('task')
     return {
       program_id: program.id,
       day_number: day.number,

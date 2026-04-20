@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   const systemPrompt = buildSystemPrompt(mode!, dayNumber, candidateProfile, programDay?.ai_instructions)
   const { model: dayModel, max_tokens: dayMaxTokens } = programDay
     ? { model: programDay.ai_model, max_tokens: programDay.ai_max_tokens }
-    : getDayModelConfig(mode!, dayNumber)
+    : getDayModelConfig(mode!)
 
   const anthropic = new Anthropic()
   const encoder   = new TextEncoder()
@@ -121,10 +121,19 @@ export async function POST(req: Request) {
           const toolResults: Anthropic.ToolResultBlockParam[] = []
 
           for (const toolBlock of toolBlocks) {
-            const result = await executeToolCall(toolBlock, userId!, supabase!, sessionId, enrollment?.id)
-            if (!cancelled) controller.enqueue(
-              encoder.encode(`data: ${JSON.stringify({ type: 'tool_result', tool: toolBlock.name })}\n\n`)
-            )
+            // Only scope the plan to an enrollment when the chat has explicit program context (slug).
+            // Free Mentor IA chats (no slug) produce "general" plans with no enrollment.
+            const enrollmentId = slug ? enrollment?.id : undefined
+            const result = await executeToolCall(toolBlock, userId!, supabase!, sessionId, enrollmentId)
+            if (!cancelled) {
+              const extra: Record<string, unknown> = {}
+              if (toolBlock.name === 'save_action_note' && result && typeof result === 'object') {
+                extra.title = (result as Record<string, unknown>).title ?? null
+              }
+              controller.enqueue(
+                encoder.encode(`data: ${JSON.stringify({ type: 'tool_result', tool: toolBlock.name, ...extra })}\n\n`)
+              )
+            }
             toolResults.push({
               type: 'tool_result',
               tool_use_id: toolBlock.id,
@@ -139,7 +148,7 @@ export async function POST(req: Request) {
           ]
         }
 
-        const interactionType = mode === 'mentor' ? 'mentor' : mode === 'cv' ? 'cv_rewrite' : 'chat'
+        const interactionType = mode === 'mentor' ? 'mentor' : mode === 'cv' ? 'cv_rewrite' : dayNumber !== undefined ? 'day_activity' : 'chat'
         await recordTokenUsage(
           userId!,
           totalInputTokens + totalOutputTokens,

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -14,16 +15,19 @@ interface ChatWindowProps {
   initialPrompt?: string
   dayNumber?: number
   slug?: string
+  mode?: 'task' | 'mentor'
   loadSessionId?: string | null
   onSessionCreated?: (sessionId: string) => void
 }
 
-export function ChatWindow({ initialPrompt, dayNumber, slug, loadSessionId, onSessionCreated }: ChatWindowProps) {
-  const mode = 'task' as const
+export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', loadSessionId, onSessionCreated }: ChatWindowProps) {
+  const router = useRouter()
   const [messages, setMessages]   = useState<Message[]>([])
   const [input, setInput]         = useState('')
   const [loading, setLoading]     = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [dayCompleted, setDayCompleted] = useState(false)
+  const [planSaved, setPlanSaved] = useState<{ title: string } | null>(null)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const didAutoSend    = useRef(false)
@@ -41,6 +45,8 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, loadSessionId, onSe
     if (!loadSessionId) {
       setMessages([])
       setSessionId(null)
+      setDayCompleted(false)
+      setPlanSaved(null)
       didAutoSend.current = false
       return
     }
@@ -149,6 +155,11 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, loadSessionId, onSe
             }
             if (event.type === 'tool_result') {
               toolCalls.push(event.tool)
+              if (event.tool === 'save_day_output') setDayCompleted(true)
+              if (event.tool === 'save_action_note') {
+                setPlanSaved({ title: event.title ?? 'Plano de ação' })
+                router.refresh()
+              }
               setMessages(prev => {
                 const updated = [...prev]
                 updated[updated.length - 1] = { role: 'assistant', content: assistantContent, toolCalls: [...toolCalls] }
@@ -282,6 +293,68 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, loadSessionId, onSe
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Day completion card */}
+      {dayCompleted && dayNumber && slug && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px', marginBottom: 10,
+          background: 'var(--green-dim)', border: '0.5px solid rgba(74,222,128,.25)',
+          borderRadius: 'var(--r)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15 }}>✓</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--green)' }}>Sessão concluída</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>
+                Volte ao dia para marcar as atividades como concluídas
+              </div>
+            </div>
+          </div>
+          <a
+            href={`/${slug}/days/${dayNumber}`}
+            style={{
+              fontSize: 12, fontWeight: 500, padding: '6px 14px',
+              borderRadius: 'var(--rsm)', textDecoration: 'none',
+              background: 'var(--green-dim)', color: 'var(--green)',
+              border: '0.5px solid rgba(74,222,128,.35)',
+              flexShrink: 0,
+            }}
+          >
+            Ir para o Dia {dayNumber} →
+          </a>
+        </div>
+      )}
+
+      {/* Plan saved card */}
+      {planSaved && (
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '12px 16px', marginBottom: 10,
+          background: 'rgba(168,85,247,.08)', border: '0.5px solid rgba(168,85,247,.25)',
+          borderRadius: 'var(--r)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 15 }}>◈</span>
+            <div>
+              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--purple)' }}>{planSaved.title}</div>
+              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>Plano salvo — acesse na sua lista de planos</div>
+            </div>
+          </div>
+          <a
+            href="/plans"
+            style={{
+              fontSize: 12, fontWeight: 500, padding: '6px 14px',
+              borderRadius: 'var(--rsm)', textDecoration: 'none',
+              background: 'rgba(168,85,247,.12)', color: 'var(--purple)',
+              border: '0.5px solid rgba(168,85,247,.35)',
+              flexShrink: 0,
+            }}
+          >
+            Ver planos →
+          </a>
+        </div>
+      )}
 
       {/* Input */}
       <div style={{

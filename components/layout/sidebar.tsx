@@ -16,7 +16,7 @@ interface SidebarProps {
   user: User | null
   role?: string
   enrollments?: Enrollment[]
-  enrollmentIdsWithPlans?: string[]
+  hasPlans?: boolean
   tokenUsed?: number
   tokenTotal?: number
   plan?: string
@@ -28,7 +28,7 @@ export function Sidebar({
   user,
   role: _role = 'student',
   enrollments = [],
-  enrollmentIdsWithPlans = [],
+  hasPlans = false,
   tokenUsed = 0,
   tokenTotal = 2_000_000,
   plan = 'Bootcamp',
@@ -88,8 +88,8 @@ export function Sidebar({
           badge: undefined,
           icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="5" height="5" rx="1" /><rect x="9" y="2" width="5" height="5" rx="1" /><rect x="2" y="9" width="5" height="5" rx="1" /><rect x="9" y="9" width="5" height="5" rx="1" /></svg>,
         },
-        ...(enrollmentIdsWithPlans.includes(activeEnrollment?.id ?? '') ? [{
-          id: 'plans', label: 'Planos de Ação', href: `/${slug}/plans`,
+        ...(hasPlans ? [{
+          id: 'plans', label: 'Planos de Ação', href: '/plans',
           badge: undefined,
           icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="12" height="12" rx="1.5" /><polyline points="5,8 7,10 11,6" /></svg>,
         }] : []),
@@ -295,14 +295,8 @@ export function Sidebar({
         border: '0.5px solid var(--border)', borderRadius: 'var(--r)',
         padding: '12px 13px',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        <div style={{ marginBottom: 8 }}>
           <span style={{ fontSize: 11, color: 'var(--text3)' }}>Créditos</span>
-          <span style={{
-            fontSize: 10, fontWeight: 500, color: 'var(--accent)',
-            background: 'var(--accent-dim)', padding: '2px 7px', borderRadius: 8, cursor: 'pointer',
-          }}>
-            {plan}
-          </span>
         </div>
         <div style={{ height: 4, background: 'var(--bg4)', borderRadius: 2, overflow: 'hidden', marginBottom: 6 }}>
           <div style={{

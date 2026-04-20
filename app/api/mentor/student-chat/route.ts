@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ── Tool definitions ─────────────────────────────────────────────────────────
@@ -328,6 +329,8 @@ export async function POST(req: Request) {
       let currentMessages: Anthropic.MessageParam[] = messages
       let sessionSaved = false
       let assistantContent = ''
+      let totalInputTokens  = 0
+      let totalOutputTokens = 0
 
       try {
         // Agentic loop — continues until no more tool calls
@@ -339,6 +342,9 @@ export async function POST(req: Request) {
             tools: MENTOR_TOOLS,
             messages: currentMessages,
           })
+
+          totalInputTokens  += response.usage.input_tokens
+          totalOutputTokens += response.usage.output_tokens
 
           // Stream any text content
           for (const block of response.content) {
@@ -376,6 +382,16 @@ export async function POST(req: Request) {
 
           currentMessages = [...currentMessages, { role: 'user', content: toolResults }]
         }
+
+        await recordTokenUsage(
+          caller.id,
+          totalInputTokens + totalOutputTokens,
+          'mentor_student_chat',
+          { student_user_id: userId },
+          'claude-sonnet-4-6',
+          totalInputTokens,
+          totalOutputTokens,
+        )
 
         // Persist session
         const finalMessages = [...messages, { role: 'assistant', content: assistantContent }]
