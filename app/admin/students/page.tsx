@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase/service'
 import { StudentsTable } from '@/components/mentor/students-table'
+import { PendingRow } from '@/components/admin/pending-row'
 
 async function getStudents() {
   const supabase = createServiceClient()
@@ -8,7 +9,6 @@ async function getStudents() {
     supabase
       .from('profiles')
       .select('id, full_name, role, created_at')
-      .in('role', ['student', 'mentor', 'admin'])
       .order('created_at', { ascending: false }),
     supabase.from('day_activities').select('user_id, day_number, status, updated_at'),
     supabase.from('token_balance').select('user_id, tokens_total, tokens_used, is_active, expires_at'),
@@ -18,7 +18,10 @@ async function getStudents() {
   const activities = activitiesRes.data ?? []
   const balances   = balancesRes.data ?? []
 
-  return profiles.map(p => {
+  const pending = profiles.filter(p => p.role === 'pending')
+  const active  = profiles.filter(p => p.role !== 'pending')
+
+  const toRow = (p: typeof profiles[number]) => {
     const userActs      = activities.filter(a => a.user_id === p.id)
     const completed     = userActs.filter(a => a.status === 'done')
     const completedNums = completed.map(a => a.day_number)
@@ -44,18 +47,65 @@ async function getStudents() {
       tokensTotal,
       tokensUsed,
     }
-  })
+  }
+
+  return {
+    pending,
+    students: active.map(toRow),
+  }
 }
 
 export default async function AdminStudentsPage() {
-  const students = await getStudents()
+  const { pending, students } = await getStudents()
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', background: 'var(--bg)' }}>
+
+      {/* ── Pending approvals ── */}
+      {pending.length > 0 && (
+        <div style={{ marginBottom: 32 }}>
+          <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
+              Acesso pendente
+            </h2>
+            <span style={{
+              fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+              background: 'var(--orange-dim)', color: 'var(--orange)',
+            }}>
+              {pending.length}
+            </span>
+          </div>
+
+          <div style={{
+            background: 'var(--bg2)', border: '0.5px solid var(--border)',
+            borderRadius: 'var(--r)', overflow: 'hidden',
+          }}>
+            {/* Header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 140px 120px',
+              padding: '10px 16px',
+              borderBottom: '0.5px solid var(--border)',
+              fontSize: 11, color: 'var(--text4)',
+              textTransform: 'uppercase', letterSpacing: '.08em',
+            }}>
+              <span>Usuário</span>
+              <span>Tipo de acesso</span>
+              <span />
+            </div>
+
+            {pending.map((u, i) => (
+              <PendingRow key={u.id} user={u} isLast={i === pending.length - 1} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Active students ── */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Alunos</h1>
         <p style={{ fontSize: 13, color: 'var(--text3)', margin: '4px 0 0' }}>
-          {students.length} aluno{students.length !== 1 ? 's' : ''} cadastrado{students.length !== 1 ? 's' : ''}
+          {students.length} aluno{students.length !== 1 ? 's' : ''} com acesso ativo
         </p>
       </div>
 
