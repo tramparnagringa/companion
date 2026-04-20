@@ -2,52 +2,17 @@ import type { Database } from '@/types/database'
 
 type CandidateProfile = Database['public']['Tables']['candidate_profiles']['Row']
 
-const SONNET = 'claude-haiku-4-5-20251001' // TEST: using haiku for all days
+const SONNET = 'claude-sonnet-4-6'
 const HAIKU  = 'claude-haiku-4-5-20251001'
-
-// Sonnet: heavy generation (CV analysis, bullets, LinkedIn writing, job fit scoring, simulations).
-// Haiku: conversational (market definition, retros, planning, networking, short outputs).
-const DAY_MODEL_CONFIG: Record<number, { model: string; max_tokens: number }> = {
-  1:  { model: SONNET, max_tokens: 2048 }, // CV analysis — long input + structured output
-  2:  { model: HAIKU,  max_tokens: 600  }, // job platforms + search terms — conversational
-  3:  { model: HAIKU,  max_tokens: 600  }, // boolean search + alerts — conversational
-  4:  { model: SONNET, max_tokens: 1500 }, // job analysis — fit score + keywords
-  5:  { model: HAIKU,  max_tokens: 600  }, // target market definition — conversational
-  6:  { model: SONNET, max_tokens: 1200 }, // value proposition — generative
-  7:  { model: HAIKU,  max_tokens: 700  }, // retro week 1 — conversational
-  8:  { model: HAIKU,  max_tokens: 700  }, // planning week 2 — conversational
-  9:  { model: SONNET, max_tokens: 2048 }, // CV bullets rewriting — per experience entry
-  10: { model: SONNET, max_tokens: 1500 }, // CV ATS analysis — comparison + suggestions
-  11: { model: SONNET, max_tokens: 1800 }, // LinkedIn headline + about — long-form writing
-  12: { model: HAIKU,  max_tokens: 700  }, // LinkedIn SEO — keyword analysis
-  13: { model: HAIKU,  max_tokens: 700  }, // AI fluency statements — short outputs
-  14: { model: HAIKU,  max_tokens: 700  }, // retro week 2 — conversational
-  15: { model: HAIKU,  max_tokens: 700  }, // planning week 3 — conversational
-  16: { model: SONNET, max_tokens: 1200 }, // application strategy — fit analysis
-  17: { model: HAIKU,  max_tokens: 700  }, // strategic networking — message generation
-  18: { model: HAIKU,  max_tokens: 700  }, // recruiter messages — short outputs
-  19: { model: HAIKU,  max_tokens: 800  }, // LinkedIn visibility — post ideas + comments
-  20: { model: SONNET, max_tokens: 1200 }, // cover note — generative
-  21: { model: HAIKU,  max_tokens: 700  }, // retro week 3 — pattern analysis
-  22: { model: HAIKU,  max_tokens: 700  }, // planning week 4 — interview map
-  23: { model: SONNET, max_tokens: 1800 }, // STAR stories — structured generation + live practice
-  24: { model: SONNET, max_tokens: 1500 }, // soft skills under pressure — STAR + live practice
-  25: { model: SONNET, max_tokens: 1500 }, // technical interview simulation
-  26: { model: SONNET, max_tokens: 2048 }, // full interview simulation
-  27: { model: SONNET, max_tokens: 1500 }, // salary negotiation — research + scripts
-  28: { model: HAIKU,  max_tokens: 800  }, // retro week 4 — transformation review
-  29: { model: HAIKU,  max_tokens: 800  }, // next steps — continuity plan
-  30: { model: SONNET, max_tokens: 2048 }, // celebration — transformation summary + Day 1 comparison
-}
 
 const DEFAULT_TASK_CONFIG = { model: SONNET, max_tokens: 1200 }
 const MENTOR_CONFIG       = { model: HAIKU,  max_tokens: 1000 }
 const CV_CONFIG           = { model: SONNET, max_tokens: 2048 }
 
-export function getDayModelConfig(mode: 'task' | 'mentor' | 'cv', dayNumber?: number) {
+export function getDayModelConfig(mode: 'task' | 'mentor' | 'cv') {
   if (mode === 'mentor') return MENTOR_CONFIG
   if (mode === 'cv')     return CV_CONFIG
-  return DAY_MODEL_CONFIG[dayNumber ?? 0] ?? DEFAULT_TASK_CONFIG
+  return DEFAULT_TASK_CONFIG
 }
 
 export function buildSystemPrompt(

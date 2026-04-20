@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import Anthropic from '@anthropic-ai/sdk'
+import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
 
 // Detect the current phase based on what's already in the program.
 // outline  — no days yet, or only stub days (name = "Dia N")
@@ -148,6 +149,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new Response('Unauthorized', { status: 401 })
+  const callerId = user.id
 
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
   if (!['admin'].includes(profile?.role ?? '')) return new Response('Forbidden', { status: 403 })
@@ -224,6 +226,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           controller.close()
         }
       }
+
+      const finalMsg = await stream.finalMessage()
+      const input  = finalMsg.usage.input_tokens
+      const output = finalMsg.usage.output_tokens
+      await recordTokenUsage(callerId, input + output, 'program_generation', { program_id: id }, 'claude-sonnet-4-6', input, output)
     }
   })
 

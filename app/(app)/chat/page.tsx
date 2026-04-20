@@ -115,6 +115,7 @@ export default function ChatPage() {
             initialPrompt={sessionToLoad ? undefined : initialPrompt}
             dayNumber={dayNumber}
             slug={slug}
+            mode={dayNumber ? 'task' : 'mentor'}
             loadSessionId={sessionToLoad}
             onSessionCreated={handleSessionCreated}
           />

@@ -1,5 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { anthropic } from '@/lib/anthropic/client'
+import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
 import type { Json } from '@/types/database'
 
 export async function POST(req: Request) {
@@ -87,6 +88,16 @@ Then respond ONLY with a valid JSON object (no markdown, no explanation):
   } catch {
     return Response.json({ error: 'parse_error', raw: text }, { status: 500 })
   }
+
+  await recordTokenUsage(
+    user.id,
+    response.usage.input_tokens + response.usage.output_tokens,
+    'interview_prep',
+    { job_id: jobId },
+    'claude-sonnet-4-6',
+    response.usage.input_tokens,
+    response.usage.output_tokens,
+  )
 
   // Persist
   await supabase
