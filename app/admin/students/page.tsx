@@ -5,23 +5,33 @@ import { PendingRow } from '@/components/admin/pending-row'
 async function getStudents() {
   const supabase = createServiceClient()
 
-  const [profilesRes, activitiesRes, balancesRes] = await Promise.all([
+  const [profilesRes, activitiesRes, balancesRes, usersRes, programsRes] = await Promise.all([
     supabase
       .from('profiles')
       .select('id, full_name, role, created_at')
       .order('created_at', { ascending: false }),
     supabase.from('day_activities').select('user_id, day_number, status, updated_at'),
     supabase.from('token_balance').select('user_id, tokens_total, tokens_used, is_active, expires_at'),
+    supabase.auth.admin.listUsers({ perPage: 1000 }),
+    supabase
+      .from('programs')
+      .select('id, name, slug, token_allocation, validity_days, credit_ratio')
+      .order('name'),
   ])
 
   const profiles   = profilesRes.data ?? []
   const activities = activitiesRes.data ?? []
   const balances   = balancesRes.data ?? []
+  const programs   = programsRes.data ?? []
+  const emailMap   = Object.fromEntries(
+    (usersRes.data?.users ?? []).map(u => [u.id, u.email ?? null])
+  )
 
   const pending = profiles.filter(p => p.role === 'pending')
   const active  = profiles.filter(p => p.role !== 'pending')
 
   const toRow = (p: typeof profiles[number]) => {
+    const email = emailMap[p.id] ?? null
     const userActs      = activities.filter(a => a.user_id === p.id)
     const completed     = userActs.filter(a => a.status === 'done')
     const completedNums = completed.map(a => a.day_number)
@@ -40,6 +50,7 @@ async function getStudents() {
     return {
       id: p.id,
       full_name: p.full_name,
+      email,
       role: p.role,
       currentDay,
       completedCount: completed.length,
@@ -49,14 +60,17 @@ async function getStudents() {
     }
   }
 
+  const pendingWithEmail = pending.map(p => ({ ...p, email: emailMap[p.id] ?? null }))
+
   return {
-    pending,
+    pending: pendingWithEmail,
     students: active.map(toRow),
+    programs,
   }
 }
 
 export default async function AdminStudentsPage() {
-  const { pending, students } = await getStudents()
+  const { pending, students, programs } = await getStudents()
 
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', background: 'var(--bg)' }}>
@@ -80,22 +94,8 @@ export default async function AdminStudentsPage() {
             background: 'var(--bg2)', border: '0.5px solid var(--border)',
             borderRadius: 'var(--r)', overflow: 'hidden',
           }}>
-            {/* Header */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 140px 120px',
-              padding: '10px 16px',
-              borderBottom: '0.5px solid var(--border)',
-              fontSize: 11, color: 'var(--text4)',
-              textTransform: 'uppercase', letterSpacing: '.08em',
-            }}>
-              <span>Usuário</span>
-              <span>Tipo de acesso</span>
-              <span />
-            </div>
-
             {pending.map((u, i) => (
-              <PendingRow key={u.id} user={u} isLast={i === pending.length - 1} />
+              <PendingRow key={u.id} user={u} programs={programs} isLast={i === pending.length - 1} />
             ))}
           </div>
         </div>

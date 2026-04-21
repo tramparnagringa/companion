@@ -5,6 +5,7 @@ import Link from 'next/link'
 interface StudentRow {
   id: string
   full_name: string | null
+  email?: string | null
   role: string | null
   currentDay: number
   completedCount: number
@@ -75,7 +76,7 @@ export function StudentsTable({ students, basePath = '/mentor/students' }: { stu
                   {s.full_name ?? 'Sem nome'}
                 </div>
                 <div style={{ fontSize: 11, color: 'var(--text4)', marginTop: 1 }}>
-                  {s.id.slice(0, 8)}
+                  {s.email ?? s.id.slice(0, 8)}
                 </div>
               </div>
 
@@ -131,12 +132,17 @@ export function StudentsTable({ students, basePath = '/mentor/students' }: { stu
 
               {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                   <span style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {s.full_name ?? 'Sem nome'}
                   </span>
                   {roleBadge(s.role)}
                 </div>
+                {s.email && (
+                  <div style={{ fontSize: 11, color: 'var(--text4)', marginBottom: 3, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.email}
+                  </div>
+                )}
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <span style={{ fontSize: 11, color: 'var(--text4)', fontFamily: 'var(--mono)' }}>
                     Dia {s.currentDay}
