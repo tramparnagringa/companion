@@ -34,7 +34,40 @@ Programa: "${program.name}" — ${program.total_days} dias.
 Você NÃO tem acesso a funções ou ferramentas. Você não chama update_profile, save_day_output nem nada parecido.
 O único mecanismo de persistência é: **quando você escreve um bloco \`\`\`json ... \`\`\` na sua resposta, o sistema automaticamente lê, parseia e salva no banco**.
 Portanto: se você não escrever o bloco JSON, NADA é salvo. Se você escrever o bloco JSON corretamente, TUDO é salvo automaticamente.
-Nunca diga "salvei" sem ter incluído o bloco JSON na resposta.`
+Nunca diga "salvei" sem ter incluído o bloco JSON na resposta.
+
+## CAMPOS DO PROGRAMA (metadados e loja)
+Além dos dias, você pode atualizar os campos do programa em si usando a chave "program" no JSON:
+\`\`\`json
+{
+  "program": {
+    "name": "Nome do programa",
+    "description": "Descrição curta exibida no app",
+    "features": ["Feature 1 exibida na loja", "Feature 2", "Feature 3"],
+    "price_brl": 1997,
+    "token_allocation": 2000000,
+    "validity_days": 365,
+    "store_visible": true,
+    "display_order": 0
+  }
+}
+\`\`\`
+Campos disponíveis (todos opcionais — inclua só o que mudar):
+- name, description: nome e descrição do programa
+- features: lista de bullets exibidos na página de compra (ex: "30 dias guiados por IA")
+- price_brl: preço em reais (número inteiro ou decimal)
+- token_allocation: tokens concedidos ao comprar (ex: 2000000)
+- validity_days: validade dos tokens em dias (ex: 365)
+- store_visible: true/false — se aparece na página de compra para novos usuários
+- display_order: ordem na página de compra (menor = primeiro)
+Você pode incluir "program" e "days" no mesmo bloco JSON.
+
+Estado atual do programa:
+- Preço: ${program.price_brl != null ? `R$ ${program.price_brl}` : 'não definido'}
+- Tokens: ${program.token_allocation ?? 'não definido'}
+- Validade: ${program.validity_days ? `${program.validity_days} dias` : 'não definida'}
+- Visível na loja: ${program.store_visible ? 'sim' : 'não'}
+- Features: ${(program.features as string[] | null)?.length ? (program.features as string[]).join(' · ') : 'nenhuma'}`
 
   if (phase === 'outline') {
     return `${base}
@@ -197,6 +230,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
           if (jsonMatch) {
             try {
               const parsed = JSON.parse(jsonMatch[1])
+
+              // Save program-level fields if present
+              if (parsed.program && typeof parsed.program === 'object') {
+                const p = parsed.program
+                const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
+                if (p.name !== undefined)           update.name = p.name
+                if (p.description !== undefined)    update.description = p.description
+                if (p.features !== undefined)       update.features = p.features
+                if (p.price_brl !== undefined)      update.price_brl = p.price_brl
+                if (p.token_allocation !== undefined) update.token_allocation = p.token_allocation
+                if (p.validity_days !== undefined)  update.validity_days = p.validity_days
+                if (p.store_visible !== undefined)  update.store_visible = p.store_visible
+                if (p.display_order !== undefined)  update.display_order = p.display_order
+                await service.from('programs').update(update).eq('id', id)
+                controller.enqueue(encoder.encode(
+                  `data: ${JSON.stringify({ type: 'program_saved', fields: Object.keys(update).filter(k => k !== 'updated_at') })}\n\n`
+                ))
+              }
+
+              // Save days if present
               if (parsed.days && Array.isArray(parsed.days)) {
                 for (const day of parsed.days) {
                   await service.from('program_days').upsert({

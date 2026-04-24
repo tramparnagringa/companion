@@ -611,16 +611,20 @@ export type Database = {
       }
       programs: {
         Row: {
+          abacatepay_product_id: string | null
           created_at: string | null
+          features: string[]
           created_by: string | null
           credit_ratio: number | null
           description: string | null
+          display_order: number
           duration_days: number | null
           id: string
           is_published: boolean
           name: string
           price_brl: number | null
           slug: string
+          store_visible: boolean
           token_allocation: number | null
           token_costs: Json | null
           total_days: number
@@ -629,16 +633,20 @@ export type Database = {
           week_themes: Json
         }
         Insert: {
+          abacatepay_product_id?: string | null
           created_at?: string | null
           created_by?: string | null
           credit_ratio?: number | null
           description?: string | null
+          display_order?: number
           duration_days?: number | null
+          features?: string[]
           id?: string
           is_published?: boolean
           name: string
           price_brl?: number | null
           slug: string
+          store_visible?: boolean
           token_allocation?: number | null
           token_costs?: Json | null
           total_days?: number
@@ -647,16 +655,20 @@ export type Database = {
           week_themes?: Json
         }
         Update: {
+          abacatepay_product_id?: string | null
           created_at?: string | null
           created_by?: string | null
           credit_ratio?: number | null
           description?: string | null
+          display_order?: number
           duration_days?: number | null
+          features?: string[]
           id?: string
           is_published?: boolean
           name?: string
           price_brl?: number | null
           slug?: string
+          store_visible?: boolean
           token_allocation?: number | null
           token_costs?: Json | null
           total_days?: number

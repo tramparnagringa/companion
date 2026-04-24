@@ -66,9 +66,15 @@ export async function approveUser(params: {
 
       if (existing) {
         if (existing.status !== 'active') {
+          const isFreshCycle = existing.status === 'cancelled' || existing.status === 'completed'
           await service.from('user_programs')
-            .update({ status: 'active', updated_at: new Date().toISOString() })
+            .update({
+              status: 'active',
+              ...(isFreshCycle ? { started_at: new Date().toISOString() } : {}),
+              updated_at: new Date().toISOString(),
+            })
             .eq('id', existing.id)
+          isNewEnrollment = isFreshCycle
         }
       } else {
         await service.from('user_programs').insert({

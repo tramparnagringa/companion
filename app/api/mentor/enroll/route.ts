@@ -41,16 +41,24 @@ export async function POST(req: Request) {
     .eq('program_id', program_id)
     .single()
 
-  let isNewEnrollment = false
+  // grantTokens = true for new enrollments AND re-enrollments after cancel/completion
+  // (paused = just resuming, no new tokens; cancelled/completed = fresh cycle)
+  let grantTokens = false
 
   if (existing) {
     if (existing.status === 'active') {
       return Response.json({ error: 'already_enrolled' }, { status: 409 })
     }
-    // Re-activate if paused/cancelled
+    const isFreshCycle = existing.status === 'cancelled' || existing.status === 'completed'
     await service.from('user_programs')
-      .update({ status: 'active', updated_at: new Date().toISOString() })
+      .update({
+        status: 'active',
+        enrolled_by: user.id,
+        ...(isFreshCycle ? { started_at: new Date().toISOString() } : {}),
+        updated_at: new Date().toISOString(),
+      })
       .eq('id', existing.id)
+    grantTokens = isFreshCycle
   } else {
     await service.from('user_programs').insert({
       user_id: target_user_id,
@@ -59,11 +67,11 @@ export async function POST(req: Request) {
       status: 'active',
       started_at: new Date().toISOString(),
     })
-    isNewEnrollment = true
+    grantTokens = true
   }
 
-  // Auto-grant tokens on new enrollment if program has token_allocation configured
-  if (isNewEnrollment) {
+  // Auto-grant tokens when starting a new cycle (new enrollment or re-enroll after cancel/complete)
+  if (grantTokens) {
     const { data: tokenConfig } = await service
       .from('programs')
       .select('token_allocation, validity_days')
@@ -105,14 +113,17 @@ export async function PATCH(req: Request) {
     return new Response('Forbidden', { status: 403 })
   }
 
-  const { enrollment_id, user_id } = await req.json() as {
+  const { enrollment_id, user_id, action } = await req.json() as {
     enrollment_id: string
     user_id: string
+    action?: 'cancel' | 'pause'
   }
 
   if (!enrollment_id || !user_id) {
     return Response.json({ error: 'missing_fields' }, { status: 400 })
   }
+
+  const newStatus = action === 'pause' ? 'paused' : 'cancelled'
 
   const service = createServiceClient()
 
@@ -129,7 +140,7 @@ export async function PATCH(req: Request) {
 
   await service
     .from('user_programs')
-    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+    .update({ status: newStatus, updated_at: new Date().toISOString() })
     .eq('id', enrollment_id)
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -138,7 +149,7 @@ export async function PATCH(req: Request) {
   await service.from('mentor_actions').insert({
     mentor_id: user.id,
     target_user_id: user_id,
-    action: 'unenrollment',
+    action: newStatus === 'paused' ? 'enrollment_paused' : 'unenrollment',
     metadata: { enrollment_id, program_name: programName },
   })
 

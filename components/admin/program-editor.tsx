@@ -38,6 +38,10 @@ interface Program {
   price_brl: number | null
   duration_days: number | null
   validity_days: number | null
+  abacatepay_product_id: string | null
+  store_visible: boolean
+  display_order: number
+  features: string[]
   days: ProgramDay[]
 }
 
@@ -76,6 +80,10 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
     price_brl: program.price_brl ?? '',
     duration_days: program.duration_days ?? '',
     validity_days: program.validity_days ?? '',
+    abacatepay_product_id: program.abacatepay_product_id ?? '',
+    store_visible: program.store_visible,
+    display_order: program.display_order,
+    features_text: (program.features ?? []).join('\n'),
   })
 
   const currentPhase = useMemo(() => detectPhase(program.days), [program.days])
@@ -170,6 +178,10 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
           price_brl: headerForm.price_brl !== '' ? Number(headerForm.price_brl) : null,
           duration_days: headerForm.duration_days !== '' ? Number(headerForm.duration_days) : null,
           validity_days: headerForm.validity_days !== '' ? Number(headerForm.validity_days) : null,
+          abacatepay_product_id: headerForm.abacatepay_product_id || null,
+          store_visible: headerForm.store_visible,
+          display_order: Number(headerForm.display_order) || 0,
+          features: headerForm.features_text.split('\n').map(s => s.trim()).filter(Boolean),
         }),
       })
       if (res.ok) setProgram(p => ({
@@ -182,6 +194,10 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
         price_brl: headerForm.price_brl !== '' ? Number(headerForm.price_brl) : null,
         duration_days: headerForm.duration_days !== '' ? Number(headerForm.duration_days) : null,
         validity_days: headerForm.validity_days !== '' ? Number(headerForm.validity_days) : null,
+        abacatepay_product_id: headerForm.abacatepay_product_id || null,
+        store_visible: headerForm.store_visible,
+        display_order: Number(headerForm.display_order) || 0,
+        features: headerForm.features_text.split('\n').map(s => s.trim()).filter(Boolean),
       }))
     } finally {
       setSavingHeader(false)
@@ -356,6 +372,70 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
                 Sugerido: ≤7d → 30 dias · ≤30d → 365 dias
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Store config */}
+        <div style={{
+          borderTop: '0.5px solid var(--border)', marginTop: 14, paddingTop: 14, marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 10 }}>
+            Loja
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10, marginBottom: 10 }}>
+            <div>
+              <label style={labelStyle}>ID do produto no AbacatePay</label>
+              <input
+                value={headerForm.abacatepay_product_id}
+                onChange={e => setHeaderForm(f => ({ ...f, abacatepay_product_id: e.target.value }))}
+                placeholder="prod_xxxxxxxxxxxxxxxx"
+                style={{ ...inputStyle, fontFamily: 'var(--mono)', fontSize: 12 }}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Ordem na loja</label>
+              <input
+                type="number" min="0" step="1"
+                value={headerForm.display_order}
+                onChange={e => setHeaderForm(f => ({ ...f, display_order: Number(e.target.value) || 0 }))}
+                placeholder="0"
+                style={inputStyle}
+              />
+            </div>
+          </div>
+          <div style={{ marginBottom: 10 }}>
+            <label style={labelStyle}>Features (uma por linha — aparece como ✓ na loja)</label>
+            <textarea
+              value={headerForm.features_text}
+              onChange={e => setHeaderForm(f => ({ ...f, features_text: e.target.value }))}
+              placeholder={'30 dias guiados por IA\nCV e LinkedIn em inglês\nSimulação de entrevista'}
+              style={{ ...textareaStyle, minHeight: 96, fontFamily: 'var(--mono)', fontSize: 12 }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              onClick={() => setHeaderForm(f => ({ ...f, store_visible: !f.store_visible }))}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '6px 14px', borderRadius: 'var(--rsm)', fontSize: 12, fontWeight: 500,
+                cursor: 'pointer',
+                background: headerForm.store_visible ? 'var(--accent-dim)' : 'var(--bg4)',
+                color: headerForm.store_visible ? 'var(--accent)' : 'var(--text3)',
+                border: `0.5px solid ${headerForm.store_visible ? 'var(--accent)' : 'var(--border2)'}`,
+              }}
+            >
+              <span style={{
+                width: 8, height: 8, borderRadius: '50%',
+                background: headerForm.store_visible ? 'var(--accent)' : 'var(--text4)',
+                display: 'inline-block',
+              }} />
+              {headerForm.store_visible ? 'Visível na loja' : 'Oculto da loja'}
+            </button>
+            <span style={{ fontSize: 11, color: 'var(--text4)' }}>
+              {headerForm.store_visible
+                ? 'Aparece na página de compra para novos usuários'
+                : 'Não aparece na página de compra'}
+            </span>
           </div>
         </div>
 
