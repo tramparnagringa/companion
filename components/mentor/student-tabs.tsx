@@ -270,27 +270,28 @@ function ProgramasTab({ data, userId }: { data: StudentData; userId: string }) {
   const [enrolling, setEnrolling]             = useState(false)
   const [enrollMessage, setEnrollMessage]     = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [localEnrollments, setLocalEnrollments] = useState(enrollments)
-  const [confirmCancel, setConfirmCancel]       = useState<string | null>(null)
-  const [cancelling, setCancelling]             = useState<Set<string>>(new Set())
+  const [confirmAction, setConfirmAction] = useState<{ id: string; action: 'cancel' | 'pause' } | null>(null)
+  const [busy, setBusy]                   = useState<Set<string>>(new Set())
 
-  async function handleCancel(enrollmentId: string) {
-    setCancelling(prev => new Set(prev).add(enrollmentId))
-    setConfirmCancel(null)
+  async function handleStatusChange(enrollmentId: string, action: 'cancel' | 'pause') {
+    setBusy(prev => new Set(prev).add(enrollmentId))
+    setConfirmAction(null)
     try {
       const res = await fetch('/api/mentor/enroll', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enrollment_id: enrollmentId, user_id: userId }),
+        body: JSON.stringify({ enrollment_id: enrollmentId, user_id: userId, action }),
       })
       if (res.ok) {
+        const newStatus = action === 'pause' ? 'paused' : 'cancelled'
         setLocalEnrollments(prev =>
-          prev.map(e => e.id === enrollmentId ? { ...e, status: 'cancelled' } : e)
+          prev.map(e => e.id === enrollmentId ? { ...e, status: newStatus } : e)
         )
       }
     } catch {
       // silently fail — user can reload
     } finally {
-      setCancelling(prev => { const s = new Set(prev); s.delete(enrollmentId); return s })
+      setBusy(prev => { const s = new Set(prev); s.delete(enrollmentId); return s })
     }
   }
 
@@ -418,8 +419,9 @@ function ProgramasTab({ data, userId }: { data: StudentData; userId: string }) {
         const pct         = totalDays > 0 ? Math.round((done / totalDays) * 100) : 0
         const isCompleted = e.status === 'completed'
         const isCancelled = e.status === 'cancelled'
+        const isPaused    = e.status === 'paused'
         const isActive    = e.status === 'active'
-        const isBusy      = cancelling.has(e.id)
+        const isBusy      = busy.has(e.id)
 
         return (
           <div key={e.id} style={{
@@ -439,37 +441,53 @@ function ProgramasTab({ data, userId }: { data: StudentData; userId: string }) {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Chip
-                  label={isCancelled ? 'Cancelado' : isCompleted ? 'Concluído' : e.status === 'paused' ? 'Pausado' : 'Ativo'}
-                  color={isCancelled ? 'var(--red)' : isCompleted ? 'var(--green)' : e.status === 'paused' ? 'var(--orange)' : 'var(--accent)'}
-                  bg={isCancelled ? 'var(--red-dim)' : isCompleted ? 'var(--green-dim)' : e.status === 'paused' ? 'var(--orange-dim)' : 'var(--accent-dim)'}
+                  label={isCancelled ? 'Cancelado' : isCompleted ? 'Concluído' : isPaused ? 'Pausado' : 'Ativo'}
+                  color={isCancelled ? 'var(--red)' : isCompleted ? 'var(--green)' : isPaused ? 'var(--orange)' : 'var(--accent)'}
+                  bg={isCancelled ? 'var(--red-dim)' : isCompleted ? 'var(--green-dim)' : isPaused ? 'var(--orange-dim)' : 'var(--accent-dim)'}
                 />
-                {isActive && !isBusy && confirmCancel !== e.id && (
-                  <button
-                    onClick={() => setConfirmCancel(e.id)}
-                    style={{
-                      padding: '3px 8px', borderRadius: 'var(--rsm)', fontSize: 11,
-                      background: 'transparent', color: 'var(--text4)',
-                      border: '0.5px solid var(--border2)', cursor: 'pointer',
-                    }}
-                  >
-                    Cancelar
-                  </button>
-                )}
-                {isActive && confirmCancel === e.id && (
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>Tem certeza?</span>
+                {isActive && !isBusy && confirmAction?.id !== e.id && (
+                  <>
                     <button
-                      onClick={() => handleCancel(e.id)}
+                      onClick={() => setConfirmAction({ id: e.id, action: 'pause' })}
                       style={{
                         padding: '3px 8px', borderRadius: 'var(--rsm)', fontSize: 11,
-                        background: 'var(--red-dim)', color: 'var(--red)',
+                        background: 'transparent', color: 'var(--text4)',
+                        border: '0.5px solid var(--border2)', cursor: 'pointer',
+                      }}
+                    >
+                      Pausar
+                    </button>
+                    <button
+                      onClick={() => setConfirmAction({ id: e.id, action: 'cancel' })}
+                      style={{
+                        padding: '3px 8px', borderRadius: 'var(--rsm)', fontSize: 11,
+                        background: 'transparent', color: 'var(--red)',
                         border: '0.5px solid var(--red)', cursor: 'pointer',
+                      }}
+                    >
+                      Cancelar
+                    </button>
+                  </>
+                )}
+                {isActive && confirmAction?.id === e.id && (
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>
+                      {confirmAction.action === 'pause' ? 'Pausar programa?' : 'Cancelar acesso?'}
+                    </span>
+                    <button
+                      onClick={() => handleStatusChange(e.id, confirmAction.action)}
+                      style={{
+                        padding: '3px 8px', borderRadius: 'var(--rsm)', fontSize: 11,
+                        background: confirmAction.action === 'pause' ? 'var(--orange-dim)' : 'var(--red-dim)',
+                        color: confirmAction.action === 'pause' ? 'var(--orange)' : 'var(--red)',
+                        border: `0.5px solid ${confirmAction.action === 'pause' ? 'var(--orange)' : 'var(--red)'}`,
+                        cursor: 'pointer',
                       }}
                     >
                       Confirmar
                     </button>
                     <button
-                      onClick={() => setConfirmCancel(null)}
+                      onClick={() => setConfirmAction(null)}
                       style={{
                         padding: '3px 8px', borderRadius: 'var(--rsm)', fontSize: 11,
                         background: 'transparent', color: 'var(--text4)',
@@ -480,7 +498,9 @@ function ProgramasTab({ data, userId }: { data: StudentData; userId: string }) {
                     </button>
                   </div>
                 )}
-                {isBusy && <span style={{ fontSize: 11, color: 'var(--text4)' }}>Cancelando...</span>}
+                {isBusy && (
+                  <span style={{ fontSize: 11, color: 'var(--text4)' }}>Salvando...</span>
+                )}
               </div>
             </div>
 

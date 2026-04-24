@@ -48,6 +48,10 @@ export async function PUT(
     price_brl?: number | null
     duration_days?: number | null
     validity_days?: number | null
+    abacatepay_product_id?: string | null
+    store_visible?: boolean
+    display_order?: number
+    features?: string[]
   }
 
   if (body.slug !== undefined) {

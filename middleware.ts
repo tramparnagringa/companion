@@ -9,7 +9,7 @@ export async function middleware(request: NextRequest) {
   const { response, user } = await updateSession(request)
 
   const path = request.nextUrl.pathname
-  const isAuthRoute    = path.startsWith('/login') || path.startsWith('/pending')
+  const isAuthRoute    = path.startsWith('/login') || path.startsWith('/pending') || path.startsWith('/programs')
   const isAdminRoute   = path.startsWith('/admin')
   const isApiWebhook   = path.startsWith('/api/webhooks')
   const isSignout      = path.startsWith('/auth/signout')
@@ -49,9 +49,9 @@ export async function middleware(request: NextRequest) {
 
     const role = profile?.role ?? 'student'
 
-    // No access role — send to pending page
+    // No access role — send to store page
     if (!ALLOWED_ROLES.includes(role)) {
-      return NextResponse.redirect(new URL('/pending', request.url))
+      return NextResponse.redirect(new URL('/programs', request.url))
     }
 
     // Guard admin routes
