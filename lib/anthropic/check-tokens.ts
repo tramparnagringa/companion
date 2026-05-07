@@ -1,8 +1,7 @@
 import { createServiceClient } from '@/lib/supabase/service'
 
 export async function checkTokenBalance(
-  userId: string,
-  required: number
+  userId: string
 ): Promise<{ allowed: boolean; available: number }> {
   const supabase = createServiceClient()
 
@@ -20,7 +19,7 @@ export async function checkTokenBalance(
     0
   )
 
-  return { allowed: available >= required, available }
+  return { allowed: available > 0, available }
 }
 
 export async function recordTokenUsage(
