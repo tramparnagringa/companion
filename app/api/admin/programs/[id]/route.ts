@@ -44,7 +44,6 @@ export async function PUT(
     is_published?: boolean
     token_allocation?: number | null
     credit_ratio?: number | null
-    token_costs?: Record<string, number> | null
     price_brl?: number | null
     duration_days?: number | null
     validity_days?: number | null

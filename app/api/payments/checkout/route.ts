@@ -48,14 +48,38 @@ export async function POST(req: Request) {
     }
   }
 
-  const checkoutResult = await abacatepay.checkouts.create({
-    methods: ['PIX'] as any,
-    items: [{ id: program.abacatepay_product_id, quantity: 1 }],
-    ...(customerId ? { customerId } : {}),
-    externalId: `${user.id}|${program.id}|${Date.now()}`,
-    completionUrl: `${process.env.NEXT_PUBLIC_APP_URL}/${program.slug}/today`,
-    returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/programs`,
-  }) as any
+  const programId = program.id
+  const programSlug = program.slug
+  const productId = program.abacatepay_product_id!
+  const userId = user.id
+
+  async function createCheckout(cId: string | null) {
+    return abacatepay.checkouts.create({
+      methods: ['PIX', 'CARD'] as any,
+      items: [{ id: productId, quantity: 1 }],
+      ...(cId ? { customerId: cId } : {}),
+      externalId: `${userId}|${programId}|${Date.now()}`,
+      completionUrl: `${process.env.NEXT_PUBLIC_APP_URL}/${programSlug}/today`,
+      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/programs`,
+    }) as any
+  }
+
+  let checkoutResult = await createCheckout(customerId).catch(async (err) => {
+    if (typeof err?.message === 'string' && err.message.includes('Customer not found')) {
+      // stale customer ID — create a fresh one and retry
+      await service.from('profiles').update({ abacatepay_customer_id: null }).eq('id', userId)
+      const fresh = await abacatepay.customers.create({
+        email: user.email!,
+        name: profile?.full_name ?? undefined,
+      }) as any
+      const freshId = fresh.id ?? null
+      if (freshId) {
+        await service.from('profiles').update({ abacatepay_customer_id: freshId }).eq('id', userId)
+      }
+      return createCheckout(freshId)
+    }
+    throw err
+  })
 
   if (!checkoutResult.url) {
     console.error('[checkout] AbacatePay result:', JSON.stringify(checkoutResult))
