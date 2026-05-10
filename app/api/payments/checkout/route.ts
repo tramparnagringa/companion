@@ -56,6 +56,7 @@ export async function POST(req: Request) {
   async function createCheckout(cId: string | null) {
     return abacatepay.checkouts.create({
       methods: ['PIX', 'CARD'] as any,
+      card: { maxInstallments: 12 } as any,
       items: [{ id: productId, quantity: 1 }],
       ...(cId ? { customerId: cId } : {}),
       externalId: `${userId}|${programId}|${Date.now()}`,
