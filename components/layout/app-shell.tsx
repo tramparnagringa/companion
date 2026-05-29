@@ -12,13 +12,12 @@ interface AppShellProps {
   user: User | null
   role?: string
   enrollments?: { id: string; slug: string; name: string; totalDays: number }[]
-  hasPlans?: boolean
   tokenUsed?: number
   tokenTotal?: number
   plan?: string
 }
 
-export function AppShell({ children, user, role, enrollments, hasPlans = false, tokenUsed, tokenTotal, plan }: AppShellProps) {
+export function AppShell({ children, user, role, enrollments, tokenUsed, tokenTotal, plan }: AppShellProps) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -39,7 +38,6 @@ export function AppShell({ children, user, role, enrollments, hasPlans = false, 
           user={user}
           role={role}
           enrollments={enrollments}
-          hasPlans={hasPlans}
           tokenUsed={tokenUsed}
           tokenTotal={tokenTotal}
           plan={plan}

@@ -1,9 +1,9 @@
 import type { User } from '@supabase/supabase-js'
 
 const ROLE_COLOR: Record<string, { bg: string; border: string; text: string }> = {
-  admin:   { bg: 'rgba(251,146,60,.2)',  border: 'rgba(251,146,60,.35)',  text: 'var(--orange)' },
-  mentor:  { bg: 'rgba(167,139,250,.2)', border: 'rgba(167,139,250,.35)', text: 'var(--purple)' },
-  default: { bg: 'rgba(228,253,139,.15)',border: 'rgba(228,253,139,.35)', text: 'var(--accent)' },
+  admin:   { bg: '#FFE4D9',               border: 'rgba(255,107,53,.4)',   text: 'var(--tng-coral)' },
+  mentor:  { bg: 'var(--tng-purple-100)', border: 'var(--tng-purple-300)', text: 'var(--tng-purple-700)' },
+  default: { bg: 'var(--tng-purple-100)',  border: 'var(--tng-purple-300)',  text: 'var(--tng-purple-700)' },
 }
 
 interface UserCardProps {

@@ -3,15 +3,27 @@
 import { useState, useTransition, useEffect } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { BookOpen, Sparkles, Zap, Brain } from 'lucide-react'
 import { saveCardState } from '@/app/actions/day-activity'
 import type { DayCard as DayCardType } from '@/lib/days'
 import { isCardComplete } from '@/lib/days'
 
+function Check({ size = 12 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden style={{ flexShrink: 0 }}
+    >
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  )
+}
+
 const TYPE_CONFIG = {
-  learn:   { bg: 'var(--blue-dim)',   text: 'var(--blue)',   label: 'CONCEITO',   icon: '◈'  },
-  ai:      { bg: 'var(--purple-dim)', text: 'var(--purple)', label: 'SESSÃO IA',  icon: '✦'  },
-  action:  { bg: 'var(--green-dim)',  text: 'var(--green)',  label: 'AÇÃO',       icon: '→'  },
-  reflect: { bg: 'var(--orange-dim)', text: 'var(--orange)', label: 'REFLEXÃO',   icon: '◎'  },
+  learn:   { label: 'CONCEITO', icon: BookOpen },
+  ai:      { label: 'SESSÃO IA', icon: Sparkles },
+  action:  { label: 'AÇÃO',     icon: Zap      },
+  reflect: { label: 'REFLEXÃO', icon: Brain    },
 }
 
 interface DayCardProps {
@@ -38,16 +50,32 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
   )
   const [, startTransition] = useTransition()
 
-  const cfg    = TYPE_CONFIG[card.type]
-  const isDone = (card.type === 'learn' || card.type === 'reflect') ? read : executed
+  const cfg         = TYPE_CONFIG[card.type]
+  const isDone      = (card.type === 'learn' || card.type === 'reflect') ? read : executed
+  const hasChecklist = !!(card.checklist && card.checklist.length > 0)
 
-  // Notify parent whenever completion state changes
+  // 'learn' maps to 'concept' for the CSS class; others match directly
+  const typeClass = card.type === 'learn' ? 'concept' : card.type
+
   useEffect(() => {
     const currentState: Record<string, boolean> = {}
     if (card.type === 'learn' || card.type === 'reflect') currentState[readKey] = read
     if (card.type === 'ai' || card.type === 'action') currentState[executedKey] = executed
     onComplete?.(cardIndex, isCardComplete(card, cardIndex, currentState))
   }, [read, executed]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-complete action cards when every checklist item is ticked
+  useEffect(() => {
+    if (card.type !== 'action' || !card.checklist || card.checklist.length === 0) return
+    const allDone = checks.length > 0 && checks.every(Boolean)
+    if (allDone && !executed) {
+      setExecuted(true)
+      startTransition(() => { saveCardState(dayNumber, executedKey, true, enrollmentId) })
+    } else if (!allDone && executed) {
+      setExecuted(false)
+      startTransition(() => { saveCardState(dayNumber, executedKey, false, enrollmentId) })
+    }
+  }, [checks]) // eslint-disable-line react-hooks/exhaustive-deps
 
   function toggleRead() {
     const next = !read
@@ -67,119 +95,85 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
     startTransition(() => { saveCardState(dayNumber, checkKey(i), next, enrollmentId) })
   }
 
-  const aiLinkStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 500, padding: '6px 12px', borderRadius: 'var(--rsm)',
-    background: 'var(--purple-dim)', color: 'var(--purple)',
-    border: '0.5px solid rgba(167,139,250,.2)',
-    textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4,
-    transition: 'opacity .15s',
-  }
-  const reflectLinkStyle: React.CSSProperties = {
-    ...aiLinkStyle,
-    background: 'var(--orange-dim)', color: 'var(--orange)',
-    border: '0.5px solid rgba(251,146,60,.2)',
-  }
-  const doneBtnStyle: React.CSSProperties = {
-    fontSize: 12, fontWeight: 500, padding: '6px 12px', borderRadius: 'var(--rsm)',
-    background: 'var(--green-dim)', color: 'var(--green)',
-    border: '0.5px solid rgba(74,222,128,.2)',
-    cursor: 'pointer', fontFamily: 'inherit', transition: 'all .2s',
-  }
-  const idleBtnStyle: React.CSSProperties = {
-    ...doneBtnStyle,
-    background: 'var(--bg4)', color: 'var(--text2)',
-    border: '0.5px solid var(--border2)',
-  }
+  const ctaHref = card.cta?.href ?? `/chat?day=${dayNumber}${slug ? `&slug=${slug}` : ''}&prompt=${encodeURIComponent(`Quero começar o Dia ${dayNumber} — ${card.title}`)}`
 
   return (
-    <div
-      style={{
-        background: 'var(--bg2)',
-        border: `0.5px solid ${open ? 'var(--border2)' : 'var(--border)'}`,
-        borderRadius: 'var(--rlg)',
-        overflow: 'hidden',
-        opacity: isDone ? 0.5 : 1,
-        transition: 'border-color .15s, opacity .3s',
-      }}
-    >
-      {/* Header */}
-      <div
-        onClick={() => setOpen(o => !o)}
-        style={{
-          padding: '15px 17px', cursor: 'pointer',
-          display: 'flex', alignItems: 'flex-start', gap: 12,
-        }}
-      >
-        <div style={{
-          width: 32, height: 32, borderRadius: 'var(--rsm)',
-          background: cfg.bg,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          flexShrink: 0, fontSize: 14,
-        }}>
-          {isDone ? '✓' : cfg.icon}
+    <div className={`lesson-card ${typeClass}${open ? ' open' : ''}${isDone ? ' done' : ''}`}>
+
+      {/* ── Header (always visible) ── */}
+      <div className="lesson-head" onClick={() => setOpen(o => !o)}>
+
+        {/* Type mark — 40×40, 2-letter abbreviation */}
+        <div className={`lesson-mark ${isDone ? 'done' : typeClass}`}>
+          {isDone ? <Check size={16} /> : <cfg.icon size={18} strokeWidth={1.8} />}
         </div>
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: '.1em',
-            textTransform: 'uppercase', color: cfg.text, marginBottom: 4,
-          }}>
+        <div className="lesson-head-body">
+          {/* Type label */}
+          <div className={`lesson-type ${isDone ? 'done' : typeClass}`}>
             {cfg.label}{card.timeEst ? ` · ${card.timeEst}` : ''}
           </div>
-          <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 3 }}>
-            {card.title}
+
+          {/* Title */}
+          <div className="lesson-title">
+            <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({ children }) => <>{children}</> }}>
+              {card.title}
+            </ReactMarkdown>
           </div>
-          {!open && (
-            <div style={{
-              fontSize: 12, color: 'var(--text3)',
-              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-            }}>
-              {card.preview}
+
+          {/* Preview snippet when collapsed */}
+          {!open && card.preview && (
+            <div className="lesson-snip">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  p:      ({ children }) => <>{children}</>,
+                  ul:     ({ children }) => <span>{children}</span>,
+                  ol:     ({ children }) => <span>{children}</span>,
+                  li:     ({ children }) => <span> · {children}</span>,
+                  h1:     ({ children }) => <span>{children}</span>,
+                  h2:     ({ children }) => <span>{children}</span>,
+                  h3:     ({ children }) => <span>{children}</span>,
+                  hr:     () => <span> — </span>,
+                  br:     () => <span> </span>,
+                }}
+              >
+                {card.preview}
+              </ReactMarkdown>
             </div>
           )}
         </div>
 
+        {/* Chevron */}
         <svg
-          width="14" height="14" viewBox="0 0 16 16" fill="none"
-          stroke="currentColor" strokeWidth="1.5"
-          style={{
-            color: 'var(--text4)', flexShrink: 0, marginTop: 2,
-            transition: 'transform .2s',
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-          }}
+          className="lesson-chev"
+          width="16" height="16" viewBox="0 0 16 16"
+          fill="none" stroke="currentColor" strokeWidth="1.7"
         >
           <polyline points="4,6 8,10 12,6" />
         </svg>
       </div>
 
-      {/* Body */}
+      {/* ── Expanded body ── */}
       {open && (
-        <div style={{ borderTop: '0.5px solid var(--border)', padding: '0 17px 16px' }}>
-          {/* Content blocks */}
+        <>
+          {/* Content blocks — CSS (.lesson-body) handles all markdown typography */}
           {card.content.length > 0 && (
-            <div style={{ paddingTop: 14, color: 'var(--text2)', lineHeight: 1.7 }}>
+            <div className="lesson-body">
               {card.content.map((block, i) => (
                 <div key={i}>
                   {block.heading && (
                     <div style={{
-                      fontSize: 13, fontWeight: 600, color: 'var(--text)',
-                      margin: i === 0 ? '0 0 8px' : '16px 0 8px',
+                      fontSize: 16, fontWeight: 600,
+                      color: 'var(--tng-ink)',
+                      fontFamily: 'var(--tng-font-display)',
+                      margin: i === 0 ? '0 0 12px' : '20px 0 12px',
+                      letterSpacing: '-0.01em',
                     }}>
                       {block.heading}
                     </div>
                   )}
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      p:      ({ children }) => <p style={{ fontSize: 16, marginBottom: 10 }}>{children}</p>,
-                      strong: ({ children }) => <strong style={{ color: 'var(--text)', fontWeight: 600 }}>{children}</strong>,
-                      em:     ({ children }) => <em style={{ color: 'var(--text)' }}>{children}</em>,
-                      ul:     ({ children }) => <ul style={{ paddingLeft: 20, marginBottom: 10 }}>{children}</ul>,
-                      ol:     ({ children }) => <ol style={{ paddingLeft: 20, marginBottom: 10 }}>{children}</ol>,
-                      li:     ({ children }) => <li style={{ fontSize: 16, marginBottom: 4 }}>{children}</li>,
-                      a:      ({ href, children }) => <a href={href} style={{ color: 'var(--accent)', textDecoration: 'underline' }}>{children}</a>,
-                    }}
-                  >
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {block.body}
                   </ReactMarkdown>
                 </div>
@@ -189,19 +183,13 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
 
           {/* Checklist */}
           {card.checklist && card.checklist.length > 0 && (
-            <div style={{ paddingTop: 12 }}>
+            <div className="lesson-checks">
               {card.checklist.map((item, i) => (
-                <label key={i} style={{
-                  display: 'flex', alignItems: 'flex-start', gap: 8,
-                  fontSize: 13, color: checks[i] ? 'var(--text3)' : 'var(--text2)',
-                  marginBottom: 6, cursor: 'pointer',
-                  textDecoration: checks[i] ? 'line-through' : 'none',
-                }}>
+                <label key={i} className={checks[i] ? 'checked' : ''}>
                   <input
                     type="checkbox"
                     checked={checks[i] ?? false}
                     onChange={() => toggleCheck(i)}
-                    style={{ marginTop: 2, accentColor: 'var(--accent)', flexShrink: 0 }}
                   />
                   {item.label}
                 </label>
@@ -210,63 +198,54 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
           )}
 
           {/* Footer */}
-          <div style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            marginTop: 14, paddingTop: 12, borderTop: '0.5px solid var(--border)',
-          }}>
-            {/* Left: status */}
-            {isDone ? (
-              <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 500 }}>
-                ✓ {card.type === 'learn' ? 'Lido' : 'Concluído'}
-              </span>
-            ) : card.tokenCost ? (
-              <span style={{ fontSize: 11, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-                ~{card.tokenCost.toLocaleString()} tokens
-              </span>
-            ) : (
-              <span />
-            )}
+          <div className="lesson-foot">
 
-            {/* Right: CTA */}
+            {/* Left spacer — placeholder for future status indicator */}
+            <span />
+
+            {/* Right: done → só o toggle; pendente → CTA + toggle */}
             {card.type === 'learn' && (
-              <button onClick={toggleRead} style={read ? doneBtnStyle : idleBtnStyle}>
-                {read ? '✓ Lido' : 'Marcar como lido'}
+              <button onClick={toggleRead} className={`btn-mark${read ? ' done' : ''}`}>
+                {read ? <><Check size={11} /> Lido</> : 'Marcar como lido'}
               </button>
             )}
 
             {(card.type === 'ai' || card.type === 'action') && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <a
-                  href={card.cta?.href ?? `/chat?day=${dayNumber}${slug ? `&slug=${slug}` : ''}&prompt=${encodeURIComponent(`Dia ${dayNumber} — ${card.title}. ${card.content[0]?.body ?? ''}`)}`}
-                  style={aiLinkStyle}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = '.75')}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                >
-                  ✦ {card.cta?.label ?? (card.type === 'action' ? 'Executar com IA' : 'Iniciar sessão')}
-                </a>
-                <button onClick={toggleExecuted} style={executed ? doneBtnStyle : idleBtnStyle}>
-                  {executed ? '✓ Feito' : 'Marcar como feito'}
-                </button>
+                {/* CTA: hide for checklist-action cards (tasks are manual), always hide when done */}
+                {!executed && !(card.type === 'action' && hasChecklist) && (
+                  <a href={ctaHref} className={card.type === 'action' ? 'btn-action' : 'btn-ai'}>
+                    {card.type === 'action' ? '→' : '✦'}{' '}
+                    {card.cta?.label ?? (card.type === 'action' ? 'Executar com IA' : 'Iniciar sessão')}
+                  </a>
+                )}
+                {/* Manual toggle: hidden for checklist-action (auto-complete drives it) unless already done */}
+                {(card.type === 'ai' || !hasChecklist || executed) && (
+                  <button onClick={toggleExecuted} className={`btn-mark${executed ? ' done' : ''}`}>
+                    {executed ? <><Check size={11} /> Feito</> : 'Marcar como feito'}
+                  </button>
+                )}
               </div>
             )}
 
             {card.type === 'reflect' && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <a
-                  href={card.cta?.href ?? `/chat?day=${dayNumber}&mode=reflect${slug ? `&slug=${slug}` : ''}&prompt=${encodeURIComponent(`Dia ${dayNumber} — reflexão do dia`)}`}
-                  style={reflectLinkStyle}
-                  onMouseEnter={e => (e.currentTarget.style.opacity = '.75')}
-                  onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                >
-                  ◎ {card.cta?.label ?? 'Reflexão do dia'}
-                </a>
-                <button onClick={toggleRead} style={read ? doneBtnStyle : idleBtnStyle}>
-                  {read ? '✓ Feito' : 'Marcar como feito'}
+                {!read && (
+                  <a
+                    href={card.cta?.href ?? `/chat?day=${dayNumber}&mode=reflect${slug ? `&slug=${slug}` : ''}&prompt=${encodeURIComponent(`Dia ${dayNumber} — reflexão do dia`)}`}
+                    className="btn-action"
+                  >
+                    ◎ {card.cta?.label ?? 'Reflexão do dia'}
+                  </a>
+                )}
+                <button onClick={toggleRead} className={`btn-mark${read ? ' done' : ''}`}>
+                  {read ? <><Check size={11} /> Feito</> : 'Marcar como feito'}
                 </button>
               </div>
             )}
+
           </div>
-        </div>
+        </>
       )}
     </div>
   )

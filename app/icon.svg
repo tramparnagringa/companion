@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Trampar na Gringa">
+  <circle cx="100" cy="100" r="92" fill="#430049"></circle>
+  <circle cx="100" cy="100" r="78" fill="none" stroke="#5A1F62" stroke-width="1.5"></circle>
+  <g transform="rotate(15 100 100)">
+    <polygon points="100,48 134,100 66,100" fill="#FF6B35"></polygon>
+    <polygon points="66,100 134,100 100,152" fill="#FF8C66"></polygon>
+  </g>
+</svg>

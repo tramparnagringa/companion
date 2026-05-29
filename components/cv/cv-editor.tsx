@@ -5,6 +5,7 @@ import type { CVContent } from './types'
 import { EMPTY_CV } from './types'
 import { CvDocument } from './cv-document'
 import { CvAiPanel }  from './cv-ai-panel'
+import { Topbar } from '@/components/layout/topbar'
 
 function parseJsonArray<T>(raw: unknown, fallback: T[]): T[] {
   if (Array.isArray(raw)) return raw as T[]
@@ -321,176 +322,183 @@ export function CvEditor({ initialVersions }: Props) {
     setAiOpen(true)
   }
 
+  const breadcrumb = (
+    <div className="topbar-crumb">
+      <strong>CV</strong>
+      {activeVersion && (
+        <>
+          <span className="sep crumb-detail">/</span>
+          {editingName ? (
+            <input
+              autoFocus
+              value={nameValue}
+              onChange={e => setNameValue(e.target.value)}
+              onBlur={commitNameEdit}
+              onKeyDown={e => {
+                if (e.key === 'Enter') commitNameEdit()
+                if (e.key === 'Escape') setEditingName(false)
+              }}
+              style={{
+                background: 'var(--tng-bone)', border: '0.5px solid var(--tng-purple-700)',
+                borderRadius: 'var(--tng-radius-xs)', padding: '2px 7px', fontSize: 13,
+                color: 'var(--tng-ink)', fontFamily: 'var(--tng-font-display)', outline: 'none', width: 180,
+              }}
+            />
+          ) : (
+            <span
+              className="crumb-detail"
+              onClick={() => { setNameValue(activeVersion.name); setEditingName(true) }}
+              title="Clique para renomear"
+              style={{ cursor: 'text' }}
+            >
+              {activeVersion.name}
+            </span>
+          )}
+        </>
+      )}
+      <span style={{
+        fontSize: 10, marginLeft: 8,
+        fontFamily: 'var(--tng-font-mono)',
+        color: saveStatus === 'saved'  ? 'var(--tng-success)'
+             : saveStatus === 'saving' ? 'var(--tng-purple-700)'
+             : 'var(--tng-ink-3)',
+        transition: 'color 0.2s',
+      }}>
+        {saveStatus === 'saved' ? '● salvo' : saveStatus === 'saving' ? '● salvando…' : '● não salvo'}
+      </span>
+    </div>
+  )
+
+  const topbarActions = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      {/* Versions history */}
+      <div style={{ position: 'relative' }}>
+        <button
+          onClick={() => setHistory(o => !o)}
+          style={{
+            background: historyOpen ? 'var(--tng-bone)' : 'transparent',
+            border: '0.5px solid var(--tng-rule)', borderRadius: 'var(--tng-radius-xs)',
+            padding: '5px 10px', fontSize: 11,
+            color: 'var(--tng-ink-2)', cursor: 'pointer',
+            fontFamily: 'var(--tng-font-body)',
+          }}
+        >
+          Versões {versions.length > 0 && `(${versions.length})`}
+        </button>
+
+        {historyOpen && (
+          <div style={{
+            position: 'absolute', top: 'calc(100% + 6px)', right: 0,
+            width: 260, background: 'var(--tng-paper)',
+            border: '0.5px solid var(--tng-rule)', borderRadius: 'var(--tng-radius-sm)',
+            boxShadow: '0 4px 20px rgba(20,15,8,0.12)', zIndex: 40,
+            overflow: 'hidden',
+          }}>
+            <div style={{
+              padding: '8px 12px', borderBottom: '0.5px solid var(--tng-rule)',
+              fontSize: 10, fontWeight: 700, color: 'var(--tng-ink-3)',
+              textTransform: 'uppercase', letterSpacing: '0.08em',
+              fontFamily: 'var(--tng-font-mono)',
+            }}>
+              Versões salvas
+            </div>
+            {versions.length === 0 ? (
+              <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--tng-mute)', textAlign: 'center' }}>
+                Nenhuma versão ainda.
+              </div>
+            ) : (
+              <div style={{ maxHeight: 320, overflowY: 'auto' }}>
+                {versions.map(v => (
+                  <div
+                    key={v.id}
+                    onClick={() => !v.is_active && loadVersion(v)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 6,
+                      padding: '9px 12px', borderBottom: '0.5px solid var(--tng-rule)',
+                      cursor: v.is_active ? 'default' : 'pointer',
+                      background: v.is_active ? 'var(--tng-bone)' : 'transparent',
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--tng-ink)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
+                        {v.is_active && <span style={{ fontSize: 9, color: 'var(--tng-success)', fontWeight: 700, letterSpacing: '0.06em', flexShrink: 0, fontFamily: 'var(--tng-font-mono)' }}>ATIVA</span>}
+                      </div>
+                      <div style={{ fontSize: 10, color: 'var(--tng-ink-3)', marginTop: 1, fontFamily: 'var(--tng-font-mono)' }}>
+                        {v.created_at ? new Date(v.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                      </div>
+                    </div>
+                    {!v.is_active && (
+                      <button
+                        onClick={e => { e.stopPropagation(); deleteVersion(v.id) }}
+                        title="Apagar versão"
+                        style={{
+                          fontSize: 15, padding: '2px 5px', borderRadius: 'var(--tng-radius-xs)',
+                          background: 'none', border: 'none',
+                          color: 'var(--tng-mute)', cursor: 'pointer', flexShrink: 0,
+                          lineHeight: 1,
+                        }}
+                      >×</button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Save copy */}
+      <button
+        onClick={saveCopy}
+        style={{
+          background: saveFlash ? 'rgba(24,137,90,.1)' : 'transparent',
+          color: saveFlash ? 'var(--tng-success)' : 'var(--tng-ink-2)',
+          border: saveFlash ? '0.5px solid var(--tng-success)' : '0.5px solid var(--tng-rule)',
+          borderRadius: 'var(--tng-radius-xs)', padding: '5px 13px', fontSize: 12,
+          fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--tng-font-body)',
+          transition: 'background 0.2s, color 0.2s, border-color 0.2s',
+        }}
+      >
+        {saveFlash ? '✓ Salvo' : 'Salvar cópia'}
+      </button>
+
+      {/* New blank CV */}
+      <button
+        onClick={newCV}
+        style={{
+          background: 'var(--tng-purple-700)', color: 'var(--tng-cream)', border: 'none',
+          borderRadius: 'var(--tng-radius-xs)', padding: '5px 13px', fontSize: 12,
+          fontWeight: 600, cursor: 'pointer', fontFamily: 'var(--tng-font-body)',
+        }}
+      >
+        Novo CV
+      </button>
+
+      {/* AI button — only on mobile */}
+      {!isDesktop && (
+        <button
+          onClick={() => setAiOpen(o => !o)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 5,
+            background: aiOpen ? 'var(--tng-purple-100)' : 'var(--tng-bone)',
+            border: `0.5px solid ${aiOpen ? 'var(--tng-purple-300)' : 'var(--tng-rule)'}`,
+            borderRadius: 'var(--tng-radius-xs)', padding: '5px 12px',
+            fontSize: 12, color: aiOpen ? 'var(--tng-purple-700)' : 'var(--tng-ink-2)',
+            cursor: 'pointer', fontFamily: 'var(--tng-font-body)',
+          }}
+        >
+          <span>✦</span> IA
+        </button>
+      )}
+    </div>
+  )
+
   return (
     <div data-cv-editor style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── Top bar ── */}
-      <div data-print-hide style={{
-        display: 'flex', alignItems: 'center', gap: 8,
-        padding: '8px 16px', borderBottom: '0.5px solid var(--border)',
-        background: 'var(--bg2)', flexShrink: 0,
-      }}>
-
-        {/* Current version name — always visible */}
-        {editingName && activeVersion ? (
-          <input
-            autoFocus
-            value={nameValue}
-            onChange={e => setNameValue(e.target.value)}
-            onBlur={commitNameEdit}
-            onKeyDown={e => {
-              if (e.key === 'Enter') commitNameEdit()
-              if (e.key === 'Escape') setEditingName(false)
-            }}
-            style={{
-              background: 'var(--bg3)', border: '0.5px solid var(--accent)',
-              borderRadius: 'var(--rsm)', padding: '3px 8px', fontSize: 12,
-              color: 'var(--text)', fontFamily: 'var(--font)', outline: 'none', width: 180,
-            }}
-          />
-        ) : (
-          <button
-            onClick={() => activeVersion && (setNameValue(activeVersion.name), setEditingName(true))}
-            title={activeVersion ? 'Clique para renomear' : undefined}
-            style={{
-              background: 'none', border: 'none', padding: '2px 4px',
-              fontSize: 12, fontWeight: 500, color: 'var(--text2)',
-              cursor: activeVersion ? 'text' : 'default', borderRadius: 'var(--rsm)',
-            }}
-          >
-            {activeVersion?.name ?? ''}
-          </button>
-        )}
-
-        <span style={{
-          fontSize: 10,
-          color: saveStatus === 'saved'  ? 'var(--green)'
-               : saveStatus === 'saving' ? 'var(--accent)'
-               : 'var(--text3)',
-          transition: 'color 0.2s',
-        }}>
-          {saveStatus === 'saved' ? '● salvo' : saveStatus === 'saving' ? '● salvando…' : '● não salvo'}
-        </span>
-
-        <div style={{ flex: 1 }} />
-
-        {/* Histórico */}
-        <div style={{ position: 'relative' }}>
-          <button
-            onClick={() => setHistory(o => !o)}
-            style={{
-              background: historyOpen ? 'var(--bg4)' : 'var(--bg3)',
-              border: '0.5px solid var(--border2)', borderRadius: 'var(--rsm)',
-              padding: '5px 10px', fontSize: 11,
-              color: 'var(--text2)', cursor: 'pointer',
-            }}
-          >
-            Versões {versions.length > 0 && `(${versions.length})`}
-          </button>
-
-          {historyOpen && (
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 6px)', right: 0,
-              width: 260, background: 'var(--bg2)',
-              border: '0.5px solid var(--border2)', borderRadius: 'var(--r)',
-              boxShadow: '0 8px 24px rgba(0,0,0,0.4)', zIndex: 40,
-              overflow: 'hidden',
-            }}>
-              <div style={{
-                padding: '8px 12px', borderBottom: '0.5px solid var(--border)',
-                fontSize: 10, fontWeight: 600, color: 'var(--text3)',
-                textTransform: 'uppercase', letterSpacing: '0.06em',
-              }}>
-                Versões salvas
-              </div>
-              {versions.length === 0 ? (
-                <div style={{ padding: '16px 12px', fontSize: 12, color: 'var(--text4)', textAlign: 'center' }}>
-                  Nenhuma versão ainda.
-                </div>
-              ) : (
-                <div style={{ maxHeight: 320, overflowY: 'auto' }}>
-                  {versions.map(v => (
-                    <div
-                      key={v.id}
-                      onClick={() => !v.is_active && loadVersion(v)}
-                      style={{
-                        display: 'flex', alignItems: 'center', gap: 6,
-                        padding: '9px 12px', borderBottom: '0.5px solid var(--border)',
-                        cursor: v.is_active ? 'default' : 'pointer',
-                        background: v.is_active ? 'var(--bg3)' : 'transparent',
-                      }}
-                    >
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.name}</span>
-                          {v.is_active && <span style={{ fontSize: 9, color: 'var(--green)', fontWeight: 600, letterSpacing: '0.04em', flexShrink: 0 }}>ATIVA</span>}
-                        </div>
-                        <div style={{ fontSize: 10, color: 'var(--text3)', marginTop: 1 }}>
-                          {v.created_at ? new Date(v.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                        </div>
-                      </div>
-                      {!v.is_active && (
-                        <button
-                          onClick={e => { e.stopPropagation(); deleteVersion(v.id) }}
-                          title="Apagar versão"
-                          style={{
-                            fontSize: 15, padding: '2px 5px', borderRadius: 'var(--rsm)',
-                            background: 'none', border: 'none',
-                            color: 'var(--text4)', cursor: 'pointer', flexShrink: 0,
-                            lineHeight: 1,
-                          }}
-                        >×</button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* New blank CV */}
-        <button
-          onClick={newCV}
-          style={{
-            background: 'var(--accent)', color: 'var(--accent-text)', border: 'none',
-            borderRadius: 'var(--rsm)', padding: '5px 13px', fontSize: 12,
-            fontWeight: 600, cursor: 'pointer',
-          }}
-        >
-          Novo CV
-        </button>
-
-        {/* Save copy */}
-        <button
-          onClick={saveCopy}
-          style={{
-            background: saveFlash ? 'var(--green-dim)' : 'transparent',
-            color: saveFlash ? 'var(--green)' : 'var(--text2)',
-            border: saveFlash ? '0.5px solid var(--green)' : '0.5px solid var(--border2)',
-            borderRadius: 'var(--rsm)', padding: '5px 13px', fontSize: 12,
-            fontWeight: 500, cursor: 'pointer', transition: 'background 0.2s, color 0.2s, border-color 0.2s',
-          }}
-        >
-          {saveFlash ? '✓ Salvo' : 'Salvar cópia'}
-        </button>
-
-        {/* AI button — only on mobile */}
-        {!isDesktop && (
-          <button
-            onClick={() => setAiOpen(o => !o)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              background: aiOpen ? 'var(--purple-dim)' : 'var(--bg3)',
-              border: `0.5px solid ${aiOpen ? 'rgba(167,139,250,.3)' : 'var(--border2)'}`,
-              borderRadius: 'var(--rsm)', padding: '5px 12px',
-              fontSize: 12, color: aiOpen ? 'var(--purple)' : 'var(--text2)',
-              cursor: 'pointer',
-            }}
-          >
-            <span>✦</span> IA
-          </button>
-        )}
+      <div data-print-hide>
+        <Topbar title={breadcrumb} actions={topbarActions} />
       </div>
 
       {/* ── Document + AI panel ── */}

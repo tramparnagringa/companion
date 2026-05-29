@@ -24,27 +24,40 @@ export function BoardShell({ initialJobs, defaultRole }: {
     setSelectedJob(null)
   }
 
+  const breadcrumb = (
+    <div className="topbar-crumb">
+      <strong>Job Board</strong>
+      {jobs.length > 0 && (
+        <>
+          <span className="sep crumb-detail">/</span>
+          <strong className="crumb-detail">
+            {jobs.length} vaga{jobs.length !== 1 ? 's' : ''}
+          </strong>
+        </>
+      )}
+    </div>
+  )
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="page-col">
       <Topbar
-        title="Job Board"
-        subtitle={`${jobs.length} vaga${jobs.length !== 1 ? 's' : ''}`}
+        title={breadcrumb}
         actions={
           <button
             onClick={() => setAddingToColumn('to_analyse')}
             style={{
-              fontSize: 12, fontWeight: 500, padding: '7px 13px',
-              borderRadius: 'var(--rsm)', cursor: 'pointer', border: 'none',
-              background: 'var(--accent)', color: 'var(--accent-text)',
-              fontFamily: 'var(--font)',
+              fontSize: 12, fontWeight: 600, padding: '7px 14px',
+              borderRadius: 'var(--tng-radius-xs)', cursor: 'pointer', border: 'none',
+              background: 'var(--tng-purple-700)', color: 'var(--tng-cream)',
+              fontFamily: 'var(--tng-font-body)',
             }}
           >
             + Nova vaga
           </button>
         }
       />
-      <div style={{ flex: 1, overflow: 'hidden', padding: '20px 24px' }}>
-        <div style={{ overflowX: 'auto', paddingBottom: 12, height: '100%' }}>
+      <div style={{ flex: 1, overflow: 'hidden', padding: '28px 56px 0' }}>
+        <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 28, height: '100%' }}>
           <KanbanBoard
             initialJobs={jobs}
             defaultRole={defaultRole}

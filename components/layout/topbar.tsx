@@ -3,7 +3,7 @@
 import { useSidebar } from './sidebar-context'
 
 interface TopbarProps {
-  title: string
+  title: React.ReactNode
   subtitle?: string
   streak?: number
   actions?: React.ReactNode
@@ -13,19 +13,25 @@ export function Topbar({ title, subtitle, streak, actions }: TopbarProps) {
   const { toggle } = useSidebar()
 
   return (
-    <div style={{
-      height: 'var(--topbar-h)', padding: '0 20px',
-      borderBottom: '0.5px solid var(--border)',
+    <div className="topbar" style={{
+      height: 'var(--topbar-h)',
+      padding: '0 36px',
+      borderBottom: '1px solid var(--tng-rule)',
       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
       flexShrink: 0,
+      background: 'rgba(245, 239, 226, 0.8)',
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
+      position: 'sticky', top: 0, zIndex: 10,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        {/* Mobile hamburger */}
         <button
           onClick={toggle}
           className="sidebar-mobile-trigger"
           style={{
             width: 30, height: 30, borderRadius: 'var(--rsm)', background: 'none',
-            border: 'none', cursor: 'pointer', color: 'var(--text2)',
+            border: 'none', cursor: 'pointer', color: 'var(--tng-ink-3)',
             alignItems: 'center', justifyContent: 'center', display: 'none',
           }}
         >
@@ -35,22 +41,44 @@ export function Topbar({ title, subtitle, streak, actions }: TopbarProps) {
             <line x1="2" y1="12" x2="14" y2="12" />
           </svg>
         </button>
+
         <div>
-          <div style={{ fontSize: 14, fontWeight: 500 }}>{title}</div>
-          {subtitle && <div style={{ fontSize: 11, color: 'var(--text3)' }}>{subtitle}</div>}
+          {typeof title === 'string' ? (
+            <div style={{
+              fontSize: 22, fontWeight: 700,
+              fontFamily: 'var(--tng-font-display)',
+              color: 'var(--tng-purple-900)',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.1,
+            }}>
+              {title}
+            </div>
+          ) : (
+            title
+          )}
+          {subtitle && (
+            <div style={{ fontSize: 12, color: 'var(--tng-ink-3)', marginTop: 3, fontFamily: 'var(--tng-font-mono)', letterSpacing: '0.04em' }}>
+              {subtitle}
+            </div>
+          )}
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         {streak !== undefined && streak > 0 && (
           <div className="topbar-streak" style={{
-            display: 'flex', alignItems: 'center', gap: 5,
-            padding: '4px 10px', borderRadius: 20,
-            background: 'var(--bg3)', border: '0.5px solid var(--border2)',
-            fontSize: 12, fontWeight: 500, color: 'var(--text)',
+            display: 'inline-flex', alignItems: 'center', gap: 7,
+            padding: '6px 14px', borderRadius: 999,
+            background: 'rgba(255, 107, 53, 0.12)',
+            border: '1px solid rgba(255, 107, 53, 0.40)',
+            fontSize: 12, fontWeight: 700,
+            color: 'var(--tng-coral)',
+            fontFamily: 'var(--tng-font-mono)',
+            letterSpacing: '0.04em',
           }}>
-            <span style={{ color: 'var(--orange)' }}>🔥</span>
-            {streak} dias
+            <span>🔥</span>
+            <span style={{ color: 'var(--tng-purple-900)' }}>{streak}</span>
+            <span>dias seguidos</span>
           </div>
         )}
         {actions}

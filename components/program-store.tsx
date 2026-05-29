@@ -137,7 +137,7 @@ export function ProgramStore({
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                       <span style={{ color: 'var(--accent)', fontSize: 12 }}>✓</span>
                       <span style={{ fontSize: 13, color: 'var(--text2)' }}>
-                        {(program.token_allocation / 1_000_000).toFixed(0)}M créditos de IA inclusos
+                        {Math.floor(program.token_allocation / 1_000).toLocaleString('pt-BR')} créditos de IA inclusos
                       </span>
                     </div>
                   )}

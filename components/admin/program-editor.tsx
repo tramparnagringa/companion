@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react'
 import { ProgramAIAssistant } from './program-ai-assistant'
+import { MarkdownField } from './markdown-field'
 
 function detectPhase(days: { ai_instructions?: string | null; cards?: unknown[] }[]): 'outline' | 'week' | 'refine' {
   if (days.length === 0) return 'outline'
@@ -519,16 +520,24 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
                     <div style={{ padding: '0 14px 16px', borderTop: '0.5px solid var(--border)' }}>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 14 }}>
 
-                        {/* Name + description */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                          <div>
-                            <label style={labelStyle}>Nome do dia</label>
-                            <input value={dayForm.name} onChange={e => setDayForm(f => ({ ...f, name: e.target.value }))} style={inputStyle} />
-                          </div>
-                          <div>
-                            <label style={labelStyle}>Descrição</label>
-                            <input value={dayForm.description} onChange={e => setDayForm(f => ({ ...f, description: e.target.value }))} placeholder="Descrição breve" style={inputStyle} />
-                          </div>
+                        {/* Name */}
+                        <div>
+                          <label style={labelStyle}>Nome do dia <span style={{ color: 'var(--text4)', fontWeight: 400 }}>— use *palavra* para destaque coral</span></label>
+                          <MarkdownField
+                            value={dayForm.name}
+                            onChange={val => setDayForm(f => ({ ...f, name: val }))}
+                            minHeight={60}
+                          />
+                        </div>
+
+                        {/* Description — Markdown */}
+                        <div>
+                          <label style={labelStyle}>Descrição <span style={{ color: 'var(--text4)', fontWeight: 400 }}>— suporta **negrito**, *itálico coral*</span></label>
+                          <MarkdownField
+                            value={dayForm.description}
+                            onChange={val => setDayForm(f => ({ ...f, description: val }))}
+                            minHeight={100}
+                          />
                         </div>
 
                         {/* AI instructions */}
@@ -634,11 +643,10 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
                                       <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 11, height: 11 }}><line x1="2" y1="2" x2="10" y2="10" /><line x1="10" y1="2" x2="2" y2="10" /></svg>
                                     </button>
                                   </div>
-                                  <textarea
+                                  <MarkdownField
                                     value={card.description}
-                                    onChange={e => updateCard(i, 'description', e.target.value)}
-                                    placeholder="Descrição do card — suporta markdown (parágrafos, **negrito**, listas…)"
-                                    style={{ ...inputStyle, padding: '5px 9px', fontSize: 13, resize: 'vertical', minHeight: 72, lineHeight: 1.55 }}
+                                    onChange={val => updateCard(i, 'description', val)}
+                                    minHeight={150}
                                   />
                                 </div>
                               )

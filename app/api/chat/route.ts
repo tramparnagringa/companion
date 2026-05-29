@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { checkTokenBalance, recordTokenUsage } from '@/lib/anthropic/check-tokens'
-import { buildSystemPrompt, getDayModelConfig } from '@/lib/anthropic/system-prompts'
+import { buildSystemPrompt, type JobContext } from '@/lib/anthropic/system-prompts'
 import { ALL_TOOLS } from '@/lib/anthropic/tools'
 import { executeToolCall } from '@/lib/anthropic/tool-executor'
 import { getActiveEnrollment, getDayForUser, getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
@@ -14,6 +14,7 @@ export async function POST(req: Request) {
   let dayNumber: number | undefined
   let sessionId: string | undefined
   let slug: string | undefined
+  let jobContext: JobContext | undefined
 
   try {
     supabase = await createServerClient()
@@ -22,11 +23,12 @@ export async function POST(req: Request) {
     userId = user.id
 
     const body = await req.json()
-    messages  = body.messages
-    mode      = body.mode === 'mentor' ? 'mentor' : body.mode === 'cv' ? 'cv' : 'task'
-    dayNumber = body.dayNumber
-    slug      = body.slug as string | undefined
-    sessionId = body.sessionId as string | undefined
+    messages   = body.messages
+    mode       = body.mode === 'mentor' ? 'mentor' : body.mode === 'cv' ? 'cv' : 'task'
+    dayNumber  = body.dayNumber
+    slug       = body.slug as string | undefined
+    sessionId  = body.sessionId as string | undefined
+    jobContext = body.jobContext as JobContext | undefined
 
     const { allowed } = await checkTokenBalance(userId)
     if (!allowed) {
@@ -50,10 +52,9 @@ export async function POST(req: Request) {
         : Promise.resolve(null),
   ])
 
-  const systemPrompt = buildSystemPrompt(mode!, dayNumber, candidateProfile, programDay?.ai_instructions)
-  const { model: dayModel, max_tokens: dayMaxTokens } = programDay
-    ? { model: programDay.ai_model, max_tokens: programDay.ai_max_tokens }
-    : getDayModelConfig(mode!)
+  const systemPrompt = buildSystemPrompt(mode!, dayNumber, candidateProfile, programDay?.ai_instructions, jobContext)
+  const dayModel     = 'claude-haiku-4-5-20251001'
+  const dayMaxTokens = mode === 'cv' ? 2048 : 1200
 
   const anthropic = new Anthropic()
   const encoder   = new TextEncoder()

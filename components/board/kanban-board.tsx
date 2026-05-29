@@ -30,19 +30,21 @@ import { updateJobStatus, createJob, type JobStatus } from '@/app/actions/jobs'
 import type { Job } from './job-detail'
 
 const COLUMNS: { id: JobStatus; label: string; color: string }[] = [
-  { id: 'to_analyse',   label: 'Analisar',    color: 'var(--text3)' },
-  { id: 'analysing',    label: 'Analisando',  color: 'var(--purple)' },
-  { id: 'applied',      label: 'Aplicado',    color: 'var(--accent)' },
-  { id: 'interviewing', label: 'Entrevista',  color: '#60a5fa' },
-  { id: 'offer',        label: 'Oferta',      color: 'var(--green)' },
-  { id: 'discarded',    label: 'Descartado',  color: 'var(--red)' },
+  { id: 'to_analyse',   label: 'Analisar',    color: 'var(--tng-ink-3)' },
+  { id: 'analysing',    label: 'Analisando',  color: 'var(--tng-purple-700)' },
+  { id: 'applied',      label: 'Aplicado',    color: 'var(--tng-info)' },
+  { id: 'interviewing', label: 'Entrevista',  color: 'var(--tng-warn)' },
+  { id: 'offer',        label: 'Oferta',      color: 'var(--tng-success)' },
+  { id: 'discarded',    label: 'Descartado',  color: 'var(--tng-danger)' },
 ]
 
 const COLUMN_IDS = new Set(COLUMNS.map(c => c.id))
 
+const STATUS_COLOR: Record<JobStatus, string> = Object.fromEntries(
+  COLUMNS.map(c => [c.id, c.color])
+) as Record<JobStatus, string>
+
 // ─── Collision detection ──────────────────────────────────────────────────────
-// Try pointer-within first (accurate when hovering a rect),
-// fall back to rect intersection (catches edges and empty columns).
 
 const collisionDetection: CollisionDetection = (args) => {
   const pointerCollisions = pointerWithin(args)
@@ -53,10 +55,10 @@ const collisionDetection: CollisionDetection = (args) => {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function fitColor(score: number | null): string {
-  if (!score) return 'var(--text4)'
-  if (score >= 80) return 'var(--green)'
-  if (score >= 60) return 'var(--orange)'
-  return 'var(--red)'
+  if (!score) return 'var(--tng-mute)'
+  if (score >= 80) return 'var(--tng-success)'
+  if (score >= 60) return 'var(--tng-warn)'
+  return 'var(--tng-danger)'
 }
 
 function formatDate(iso: string | null): string {
@@ -85,36 +87,38 @@ function JobCard({ job, isDragging = false }: { job: Job; isDragging?: boolean }
   const hasFit  = job.fit_score !== null && status !== 'to_analyse'
   const showDate = (status === 'applied' || status === 'interviewing' || status === 'offer') && job.applied_at
 
-  const statusBorder = status === 'offer'
-    ? 'rgba(74, 222, 128, 0.25)'
-    : status === 'discarded'
-      ? 'rgba(248, 113, 113, 0.25)'
-      : 'var(--border)'
+  const accentColor = STATUS_COLOR[status] ?? 'var(--tng-rule)'
 
   return (
     <div style={{
-      background: isDragging ? 'var(--bg3)' : 'var(--bg2)',
-      border: `0.5px solid ${isDragging ? 'var(--accent)' : statusBorder}`,
-      borderRadius: 'var(--r)',
-      padding: '11px 12px',
+      background: isDragging ? 'var(--tng-bone)' : 'var(--tng-paper)',
+      border: `0.5px solid ${isDragging ? 'var(--tng-purple-700)' : 'var(--tng-rule)'}`,
+      borderLeft: `3px solid ${isDragging ? 'var(--tng-purple-700)' : accentColor}`,
+      borderRadius: 'var(--tng-radius-md)',
+      padding: '18px 20px',
       cursor: isDragging ? 'grabbing' : 'grab',
       opacity: isDragging ? 0.95 : 1,
-      boxShadow: isDragging ? '0 8px 24px rgba(0,0,0,0.4)' : 'none',
+      boxShadow: isDragging
+        ? '0 12px 32px rgba(20,15,8,0.18)'
+        : '0 1px 4px rgba(20,15,8,0.06)',
       userSelect: 'none',
+      transition: 'box-shadow 120ms, border-color 120ms',
     }}>
 
       {/* Company — headline */}
       <div style={{
-        fontSize: 13, fontWeight: 600, color: 'var(--text1)',
-        marginBottom: 2, lineHeight: 1.3,
+        fontSize: 19, fontWeight: 700, color: 'var(--tng-ink)',
+        marginBottom: 4, lineHeight: 1.15,
+        fontFamily: 'var(--tng-font-display)',
+        letterSpacing: '-0.02em',
       }}>
         {job.company_name}
       </div>
 
       {/* Role — secondary */}
       <div style={{
-        fontSize: 11, color: 'var(--text3)',
-        marginBottom: hasTags || hasFit || showDate ? 8 : 0,
+        fontSize: 13, color: 'var(--tng-ink-2)',
+        marginBottom: hasTags || hasFit || showDate ? 14 : 0,
         lineHeight: 1.4,
       }}>
         {job.role_title}
@@ -122,21 +126,23 @@ function JobCard({ job, isDragging = false }: { job: Job; isDragging?: boolean }
 
       {/* Tags */}
       {hasTags && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, marginBottom: hasFit || showDate ? 8 : 0 }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginBottom: hasFit || showDate ? 12 : 0 }}>
           {strong.map(kw => (
             <span key={kw} style={{
-              fontSize: 10, padding: '2px 7px', borderRadius: 20,
-              background: 'var(--purple-dim)', color: 'var(--purple)',
-              fontWeight: 500,
+              fontSize: 10, padding: '3px 9px', borderRadius: 'var(--tng-radius-pill)',
+              background: 'var(--tng-purple-100)', color: 'var(--tng-purple-700)',
+              fontWeight: 600, fontFamily: 'var(--tng-font-mono)',
+              border: '0.5px solid var(--tng-purple-300)',
             }}>
               {kw}
             </span>
           ))}
           {weak.map(kw => (
             <span key={kw} style={{
-              fontSize: 10, padding: '2px 7px', borderRadius: 20,
-              background: 'var(--orange-dim)', color: 'var(--orange)',
-              fontWeight: 500,
+              fontSize: 10, padding: '3px 9px', borderRadius: 'var(--tng-radius-pill)',
+              background: 'rgba(255,107,53,0.08)', color: 'var(--tng-coral-text)',
+              fontWeight: 600, fontFamily: 'var(--tng-font-mono)',
+              border: '0.5px solid rgba(255,107,53,0.2)',
             }}>
               {kw}
             </span>
@@ -146,18 +152,19 @@ function JobCard({ job, isDragging = false }: { job: Job; isDragging?: boolean }
 
       {/* Fit score bar */}
       {hasFit && (
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: showDate ? 6 : 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: showDate ? 10 : 0 }}>
           <span style={{
-            fontSize: 10, fontWeight: 600, fontFamily: 'var(--mono)',
-            color: fitColor(job.fit_score), minWidth: 28,
+            fontSize: 12, fontWeight: 700, fontFamily: 'var(--tng-font-mono)',
+            color: fitColor(job.fit_score), minWidth: 36,
           }}>
             {job.fit_score}%
           </span>
-          <div style={{ flex: 1, height: 2, background: 'var(--bg4)', borderRadius: 1 }}>
+          <div style={{ flex: 1, height: 4, background: 'var(--tng-rule)', borderRadius: 2 }}>
             <div style={{
-              height: '100%', borderRadius: 1,
+              height: '100%', borderRadius: 2,
               width: `${job.fit_score}%`,
               background: fitColor(job.fit_score),
+              transition: 'width 400ms var(--tng-ease-out)',
             }} />
           </div>
         </div>
@@ -165,7 +172,11 @@ function JobCard({ job, isDragging = false }: { job: Job; isDragging?: boolean }
 
       {/* Applied date */}
       {showDate && (
-        <div style={{ fontSize: 10, color: 'var(--text4)', fontFamily: 'var(--mono)' }}>
+        <div style={{
+          fontSize: 11, color: 'var(--tng-mute)',
+          fontFamily: 'var(--tng-font-mono)',
+          letterSpacing: '0.04em',
+        }}>
           aplicado {formatDate(job.applied_at)}
         </div>
       )}
@@ -187,7 +198,7 @@ function SortableJobCard({ job, onSelect }: { job: Job; onSelect: (j: Job) => vo
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
-        marginBottom: 7,
+        marginBottom: 14,
         opacity: isDragging ? 0.3 : 1,
       }}
       {...attributes}
@@ -227,15 +238,18 @@ function NewCardForm({ defaultRole, onSave, onCancel }: {
   }
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', background: 'var(--bg3)', border: '0.5px solid var(--border2)',
-    borderRadius: 'var(--rsm)', padding: '6px 8px', color: 'var(--text1)',
-    fontSize: 12, fontFamily: 'var(--font)', outline: 'none', boxSizing: 'border-box',
+    width: '100%', background: 'var(--tng-cream)',
+    border: '0.5px solid var(--tng-rule)',
+    borderRadius: 'var(--tng-radius-xs)', padding: '7px 10px',
+    color: 'var(--tng-ink)', fontSize: 13,
+    fontFamily: 'var(--tng-font-body)', outline: 'none',
+    boxSizing: 'border-box',
   }
 
   return (
     <div ref={formRef} style={{
-      background: 'var(--bg2)', border: '0.5px solid var(--accent)',
-      borderRadius: 'var(--r)', padding: '10px 11px', marginBottom: 7,
+      background: 'var(--tng-paper)', border: '0.5px solid var(--tng-purple-700)',
+      borderRadius: 'var(--tng-radius-md)', padding: '16px 18px', marginBottom: 12,
     }}>
       <input
         ref={companyRef}
@@ -249,7 +263,8 @@ function NewCardForm({ defaultRole, onSave, onCancel }: {
             ;(formRef.current?.querySelector('input:last-of-type') as HTMLInputElement)?.focus()
           }
         }}
-        style={{ ...inputStyle, marginBottom: 6, fontWeight: 600, fontSize: 13 }}
+        style={{ ...inputStyle, marginBottom: 7, fontWeight: 700, fontSize: 15,
+          fontFamily: 'var(--tng-font-display)', letterSpacing: '-0.01em' }}
       />
       <input
         placeholder="Cargo"
@@ -258,14 +273,17 @@ function NewCardForm({ defaultRole, onSave, onCancel }: {
         onKeyDown={handleKeyDown}
         style={inputStyle}
       />
-      <div style={{ display: 'flex', gap: 5, marginTop: 8 }}>
+      <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
         <button
           onClick={() => company.trim() && onSave(company.trim(), role.trim())}
           style={{
-            flex: 1, padding: '5px 0', background: 'var(--accent)', color: 'var(--accent-text)',
-            border: 'none', borderRadius: 'var(--rsm)', fontSize: 11, fontWeight: 600,
-            cursor: 'pointer', fontFamily: 'var(--font)',
+            flex: 1, padding: '7px 0',
+            background: 'var(--tng-purple-700)', color: 'var(--tng-cream)',
+            border: 'none', borderRadius: 'var(--tng-radius-xs)',
+            fontSize: 12, fontWeight: 600,
+            cursor: 'pointer', fontFamily: 'var(--tng-font-body)',
             opacity: company.trim() ? 1 : 0.4,
+            transition: 'opacity 120ms',
           }}
         >
           Adicionar
@@ -273,9 +291,9 @@ function NewCardForm({ defaultRole, onSave, onCancel }: {
         <button
           onClick={onCancel}
           style={{
-            padding: '5px 10px', background: 'none', color: 'var(--text3)',
-            border: '0.5px solid var(--border)', borderRadius: 'var(--rsm)',
-            fontSize: 11, cursor: 'pointer', fontFamily: 'var(--font)',
+            padding: '7px 12px', background: 'none', color: 'var(--tng-ink-3)',
+            border: '0.5px solid var(--tng-rule)', borderRadius: 'var(--tng-radius-xs)',
+            fontSize: 12, cursor: 'pointer', fontFamily: 'var(--tng-font-body)',
           }}
         >
           ✕
@@ -301,36 +319,57 @@ function Column({ col, jobs, isOver, isAdding, defaultRole, onAdd, onSave, onCan
   const { setNodeRef } = useDroppable({ id: col.id })
 
   return (
-    <div style={{ width: 195, flexShrink: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
-      <div style={{
-        fontSize: 11, fontWeight: 500,
-        marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexShrink: 0,
-      }}>
-        <span style={{ color: col.color }}>{col.label}</span>
-        <span style={{
-          fontSize: 10, background: 'var(--bg3)', color: 'var(--text3)',
-          padding: '1px 6px', borderRadius: 10,
-        }}>
-          {jobs.length}
-        </span>
+    <div style={{ width: 300, flexShrink: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+
+      {/* Column header */}
+      <div style={{ flexShrink: 0, marginBottom: 16, paddingBottom: 14, borderBottom: `2px solid ${col.color}` }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{
+            fontSize: 15, fontWeight: 700, color: col.color,
+            fontFamily: 'var(--tng-font-display)',
+            letterSpacing: '-0.02em',
+          }}>
+            {col.label}
+          </span>
+          <span style={{
+            fontSize: 11, fontFamily: 'var(--tng-font-mono)',
+            color: 'var(--tng-ink-3)',
+            background: 'var(--tng-bone)',
+            padding: '2px 9px', borderRadius: 'var(--tng-radius-pill)',
+            border: '0.5px solid var(--tng-rule)',
+          }}>
+            {jobs.length}
+          </span>
+        </div>
       </div>
 
-      {/* Add button or form — always at the top of the column */}
-      <div style={{ flexShrink: 0, marginBottom: isAdding || jobs.length > 0 ? 7 : 0 }}>
+      {/* Add button or form */}
+      <div style={{ flexShrink: 0, marginBottom: isAdding || jobs.length > 0 ? 12 : 0 }}>
         {isAdding ? (
           <NewCardForm defaultRole={defaultRole} onSave={onSave} onCancel={onCancel} />
         ) : (
           <button
             onClick={onAdd}
             style={{
-              padding: '6px 10px', background: 'none', border: 'none',
-              color: 'var(--text4)', fontSize: 12, cursor: 'pointer',
-              fontFamily: 'var(--font)', display: 'flex', alignItems: 'center', gap: 5,
+              width: '100%', padding: '10px 14px',
+              background: 'none', border: '0.5px dashed var(--tng-rule)',
+              borderRadius: 'var(--tng-radius-sm)',
+              color: 'var(--tng-mute)', fontSize: 13,
+              cursor: 'pointer', fontFamily: 'var(--tng-font-body)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+              transition: 'border-color 120ms, color 120ms',
+            }}
+            onMouseEnter={e => {
+              ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--tng-purple-700)'
+              ;(e.currentTarget as HTMLElement).style.color = 'var(--tng-purple-700)'
+            }}
+            onMouseLeave={e => {
+              ;(e.currentTarget as HTMLElement).style.borderColor = 'var(--tng-rule)'
+              ;(e.currentTarget as HTMLElement).style.color = 'var(--tng-mute)'
             }}
           >
-            <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Adicionar
+            <span style={{ fontSize: 17, lineHeight: 1 }}>+</span>
+            Adicionar vaga
           </button>
         )}
       </div>
@@ -340,9 +379,9 @@ function Column({ col, jobs, isOver, isAdding, defaultRole, onAdd, onSave, onCan
         ref={setNodeRef}
         style={{
           flex: 1,
-          borderRadius: 'var(--r)',
-          border: isOver ? '0.5px dashed var(--accent)' : '0.5px solid transparent',
-          background: isOver ? 'var(--accent-dim)' : 'transparent',
+          borderRadius: 'var(--tng-radius-sm)',
+          border: isOver ? '0.5px dashed var(--tng-purple-700)' : '0.5px solid transparent',
+          background: isOver ? 'var(--tng-purple-100)' : 'transparent',
           padding: 4,
           overflowY: 'auto',
           transition: 'border-color 0.12s, background 0.12s',
@@ -356,12 +395,14 @@ function Column({ col, jobs, isOver, isAdding, defaultRole, onAdd, onSave, onCan
 
         {jobs.length === 0 && !isOver && (
           <div style={{
-            height: 60, border: '0.5px dashed var(--border2)',
-            borderRadius: 'var(--r)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'var(--text4)', fontSize: 11,
+            padding: '32px 16px',
+            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+            gap: 6,
           }}>
-            —
+            <div style={{ fontSize: 20, color: 'var(--tng-rule)' }}>◈</div>
+            <div style={{ fontSize: 11, color: 'var(--tng-mute)', textAlign: 'center', lineHeight: 1.5 }}>
+              Nenhuma vaga aqui
+            </div>
           </div>
         )}
       </div>
@@ -387,12 +428,8 @@ export function KanbanBoard({ initialJobs, defaultRole, addingToColumn, onSetAdd
 
   useEffect(() => { setMounted(true) }, [])
 
-  // Sync job list when shell removes/updates jobs (archive, edit)
-  useEffect(() => {
-    setJobs(initialJobs)
-  }, [initialJobs])
+  useEffect(() => { setJobs(initialJobs) }, [initialJobs])
 
-  // Sync single job update from detail drawer
   useEffect(() => {
     if (!updatedJob) return
     setJobs(prev => prev.map(j => j.id === updatedJob.id ? updatedJob : j))
@@ -415,7 +452,6 @@ export function KanbanBoard({ initialJobs, defaultRole, addingToColumn, onSetAdd
     onJobAdded(newJob)
   }
 
-  // Given an over.id (column or card), return the column id
   function resolveColumn(overId: string): JobStatus | null {
     if (COLUMN_IDS.has(overId as JobStatus)) return overId as JobStatus
     return jobs.find(j => j.id === overId)?.status as JobStatus ?? null
@@ -449,17 +485,14 @@ export function KanbanBoard({ initialJobs, defaultRole, addingToColumn, onSetAdd
     const isSameColumn = draggedJob.status === targetColId
 
     if (isSameColumn) {
-      // Reorder within column
       if (activeId === overId) return
       setJobs(prev => {
         const oldIndex = prev.findIndex(j => j.id === activeId)
         const newIndex = prev.findIndex(j => j.id === overId)
-        // overId might be the column itself (dropped at end) — append
         if (newIndex === -1) return prev
         return arrayMove(prev, oldIndex, newIndex)
       })
     } else {
-      // Move to different column — optimistic update
       const snapshot = jobs
       setJobs(prev => prev.map(j =>
         j.id === activeId ? { ...j, status: targetColId } : j
@@ -487,7 +520,7 @@ export function KanbanBoard({ initialJobs, defaultRole, addingToColumn, onSetAdd
 
   if (!mounted) {
     return (
-      <div style={{ display: 'flex', gap: 10, minWidth: 'max-content', height: '100%' }}>
+      <div style={{ display: 'flex', gap: 20, minWidth: 'max-content', height: '100%' }}>
         {columns}
       </div>
     )
@@ -501,7 +534,7 @@ export function KanbanBoard({ initialJobs, defaultRole, addingToColumn, onSetAdd
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div style={{ display: 'flex', gap: 10, minWidth: 'max-content', height: '100%' }}>
+      <div style={{ display: 'flex', gap: 20, minWidth: 'max-content', height: '100%' }}>
         {columns}
       </div>
 

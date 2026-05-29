@@ -13,11 +13,26 @@ function detectPhase(days: any[]): 'outline' | 'week' | 'refine' {
   return hasFullContent ? 'refine' : 'week'
 }
 
+// Normalize card objects from AI output → always store as { type, title, description }
+// The AI may use "content", "body", or block arrays instead of "description"
+function normalizeCards(cards: any[]): { type: string; title: string; description: string }[] {
+  return cards.map((c: any) => {
+    const description: string =
+      typeof c.description === 'string' ? c.description
+      : typeof c.body       === 'string' ? c.body
+      : Array.isArray(c.content)
+        ? (c.content as any[]).map((b: any) => (typeof b === 'string' ? b : b.body ?? b.text ?? '')).join('\n')
+        : typeof c.content  === 'string' ? c.content
+        : ''
+    return { type: c.type ?? 'learn', title: c.title ?? '', description }
+  })
+}
+
 function buildSystemPrompt(program: any, phase: 'outline' | 'week' | 'refine'): string {
   const days = (program.program_days as unknown as any[]).sort((a, b) => a.day_number - b.day_number)
 
   const outlineSummary = days.length > 0
-    ? days.map((d: any) => `Dia ${d.day_number} (Semana ${d.week_number}): ${d.name}${d.description ? ` — ${d.description}` : ''}`).join('\n')
+    ? days.map((d: any) => `Dia ${d.day_number} (Semana ${d.week_number}): ${d.name ?? '?'}${d.description ? ` — ${d.description}` : ''}`).join('\n')
     : 'Nenhum dia configurado ainda.'
 
   const weeksSummary = (() => {
@@ -26,6 +41,34 @@ function buildSystemPrompt(program: any, phase: 'outline' | 'week' | 'refine'): 
     const pending = days.filter((d: any) => !d.ai_instructions || !d.cards?.length)
     return `\nDias com conteúdo completo: ${filled.length}/${days.length}\nDias sem conteúdo: ${pending.map((d: any) => d.day_number).join(', ') || 'nenhum'}`
   })()
+
+  // Full content of every day — used in refine phase and for filled days in week phase
+  function renderDay(d: any): string {
+    const cards = (d.cards as any[] | null) ?? []
+    const cardsText = cards.length > 0
+      ? cards.map((c: any) => {
+          // Cards may store content in "description" or "content" (string or block array)
+          const desc = c.description
+            ?? (Array.isArray(c.content) ? c.content.map((b: any) => b.body ?? b).join(' ') : c.content)
+            ?? ''
+          return `      [${c.type}] "${c.title ?? ''}": ${desc}`
+        }).join('\n')
+      : '      (sem cards)'
+    return [
+      `--- Dia ${d.day_number} (Semana ${d.week_number}): ${d.name ?? '?'} ---`,
+      d.description ? `Descrição: ${d.description}` : null,
+      `ai_instructions: ${d.ai_instructions ?? '(não definido)'}`,
+      `Cards:\n${cardsText}`,
+    ].filter(Boolean).join('\n')
+  }
+
+  const fullContent = days.length > 0
+    ? days.map(renderDay).join('\n\n')
+    : 'Nenhum dia configurado ainda.'
+
+  const filledDaysContent = days
+    .filter((d: any) => d.ai_instructions || d.cards?.length > 0)
+    .map(renderDay).join('\n\n') || 'Nenhum dia com conteúdo ainda.'
 
   const base = `Você é um assistente especializado em criar programas de desenvolvimento de carreira para profissionais que buscam vagas internacionais.
 Programa: "${program.name}" — ${program.total_days} dias.
@@ -105,6 +148,9 @@ Outline atual:
 ${outlineSummary}
 ${weeksSummary}
 
+Dias já preenchidos (conteúdo completo):
+${filledDaysContent}
+
 ## TIPOS DE CARD — leia com atenção antes de gerar
 
 O app tem 3 tipos de card que formam o fluxo de cada dia:
@@ -154,27 +200,52 @@ Quando o admin pedir uma semana, inclua na resposta um bloco \`\`\`json com este
   return `${base}
 
 ## Fase atual: REFINAMENTO
-O programa está completo. Ajude o admin a melhorar dias específicos.
+Você tem acesso ao conteúdo de TODOS os dias carregado no início desta conversa — use isso para ler e editar.
+IMPORTANTE: este contexto é um snapshot do momento em que a conversa começou. Após cada save, o banco é atualizado mas seu contexto aqui não muda. Se o admin perguntar "qual é o valor atual de X no banco", seja honesto: diga que você tem o snapshot do início da conversa e sugira verificar o editor ao lado para o estado mais recente.
 
-Outline:
-${outlineSummary}
-${weeksSummary}
+## Conteúdo completo do programa
+${fullContent}
 
 ## TIPOS DE CARD (lembre ao editar)
 - "learn"   → exibe texto + botão "Aprofundar com IA" (conceito/contexto)
-- "ai"      → exibe texto + botão "Iniciar sessão com mentor IA" (sessão principal)
-- "action"  → description vira item de checklist (tarefa concreta fora do app)
+- "action"  → exibe texto + botão "Executar com IA" (sessão principal — use este, não "ai")
 - "reflect" → exibe texto + botão "Reflexão guiada" (fechamento/retro)
 
-Para editar dias, inclua na resposta um bloco \`\`\`json com apenas os dias alterados:
+## Como editar
+- Se o admin pedir para ver um dia: responda com o conteúdo atual dele (você já tem acima) sem precisar gerar JSON.
+- Se o admin pedir uma edição: mostre o antes/depois em prosa, confirme, depois inclua o bloco JSON só com os dias alterados.
+- Se o admin pedir uma visão geral: resuma o programa usando o conteúdo acima.
+- **NUNCA delete dias sem confirmação explícita.** Quando o admin mencionar deleção, liste os dias que seriam deletados e pergunte "Confirma a exclusão permanente dos dias X, Y?" — só gere o JSON após o "sim" claro.
+
+Para salvar edições, inclua na resposta um bloco \`\`\`json com apenas os dias alterados.
+**Estrutura obrigatória de cada card — sempre use o campo "description" para o texto do card:**
 \`\`\`json
 {
   "phase": "refine",
-  "days": [{ "day_number": 3, "name": "...", "description": "...", "ai_instructions": "...", "cards": [] }]
+  "days": [
+    {
+      "day_number": 3,
+      "name": "Nome do dia",
+      "ai_instructions": "Instruções para a IA...",
+      "cards": [
+        { "type": "learn",  "title": "Título do conceito", "description": "Texto explicativo que o aluno vai ler antes da sessão." },
+        { "type": "action", "title": "Título da sessão",   "description": "O que o aluno vai construir nesta sessão com a IA." }
+      ]
+    }
+  ]
 }
 \`\`\`
 
-Converse para entender o que precisa mudar antes de gerar o JSON.`
+Para **deletar** dias permanentemente, use a chave \`"delete"\` com a lista dos números:
+\`\`\`json
+{
+  "phase": "refine",
+  "delete": [29, 30]
+}
+\`\`\`
+
+Você pode combinar \`"delete"\` e \`"days"\` no mesmo bloco (ex: deletar o dia 30 e renumerar o 29).
+Converse para entender o que precisa mudar antes de gerar o JSON. Nunca reescreva um dia inteiro quando o pedido é um ajuste pontual.`
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -226,8 +297,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         }
 
         if (event.type === 'message_stop') {
-          const jsonMatch = fullText.match(/```json\n?([\s\S]*?)\n?```/)
+          // Allow any whitespace (including multiple newlines) between the fences and the JSON
+          const jsonMatch = fullText.match(/```json\s*([\s\S]*?)\s*```/)
+          console.log('[generate] fullText length:', fullText.length, '| jsonMatch:', !!jsonMatch)
           if (jsonMatch) {
+            console.log('[generate] raw JSON to parse (first 500):', jsonMatch[1].slice(0, 500))
             try {
               const parsed = JSON.parse(jsonMatch[1])
 
@@ -249,23 +323,76 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
                 ))
               }
 
+              // Delete days if present
+              if (parsed.delete && Array.isArray(parsed.delete) && parsed.delete.length > 0) {
+                const toDelete = (parsed.delete as unknown[]).map(Number).filter((n): n is number => !isNaN(n))
+                await service
+                  .from('program_days')
+                  .delete()
+                  .eq('program_id', id)
+                  .in('day_number', toDelete)
+                controller.enqueue(encoder.encode(
+                  `data: ${JSON.stringify({ type: 'days_deleted', day_numbers: toDelete })}\n\n`
+                ))
+              }
+
               // Save days if present
               if (parsed.days && Array.isArray(parsed.days)) {
-                for (const day of parsed.days) {
-                  await service.from('program_days').upsert({
-                    program_id: id,
-                    day_number: day.day_number,
-                    week_number: day.week_number ?? Math.ceil(day.day_number / 7),
-                    name: day.name,
-                    description: day.description ?? null,
-                    ai_instructions: day.ai_instructions ?? null,
-                    cards: day.cards ?? [],
-                    ai_model: 'claude-sonnet-4-6',
-                    ai_max_tokens: 1024,
-                  }, { onConflict: 'program_id,day_number' })
+                const dayNumbers = (parsed.days as any[]).map((d: any) => d.day_number)
+
+                // Check which days already exist (one query)
+                const { data: existingRows } = await service
+                  .from('program_days')
+                  .select('day_number')
+                  .eq('program_id', id)
+                  .in('day_number', dayNumbers)
+                const existingSet = new Set((existingRows ?? []).map((r: any) => r.day_number))
+
+                for (const day of parsed.days as any[]) {
+                  if (existingSet.has(day.day_number)) {
+                    // PATCH — only update fields explicitly present in the JSON
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const patch: any = { updated_at: new Date().toISOString() }
+                    if (day.week_number     !== undefined) patch.week_number     = day.week_number
+                    if (day.name            !== undefined || day.title !== undefined) patch.name = day.name ?? day.title
+                    if (day.description     !== undefined) patch.description     = day.description
+                    if (day.ai_instructions !== undefined) patch.ai_instructions = day.ai_instructions
+                    if (day.cards           !== undefined) patch.cards           = normalizeCards(day.cards)
+                    if (day.ai_model        !== undefined) patch.ai_model        = day.ai_model
+                    if (day.ai_max_tokens   !== undefined) patch.ai_max_tokens   = day.ai_max_tokens
+                    console.log(`[generate] UPDATE day ${day.day_number} — fields:`, Object.keys(patch))
+                    const { error: updateErr } = await service.from('program_days').update(patch)
+                      .eq('program_id', id).eq('day_number', day.day_number)
+                    if (updateErr) {
+                      console.error(`[generate] UPDATE error day ${day.day_number}:`, updateErr)
+                      controller.enqueue(encoder.encode(
+                        `data: ${JSON.stringify({ type: 'save_error', day: day.day_number, error: updateErr.message })}\n\n`
+                      ))
+                    }
+                  } else {
+                    // INSERT — new day, all required fields with defaults
+                    console.log(`[generate] INSERT day ${day.day_number}`)
+                    const { error: insertErr } = await service.from('program_days').insert({
+                      program_id:      id,
+                      day_number:      day.day_number,
+                      week_number:     day.week_number ?? Math.ceil(day.day_number / 7),
+                      name:            day.name ?? day.title ?? '',
+                      description:     day.description ?? null,
+                      ai_instructions: day.ai_instructions ?? null,
+                      cards:           normalizeCards(day.cards ?? []),
+                      ai_model:        day.ai_model ?? 'claude-sonnet-4-6',
+                      ai_max_tokens:   day.ai_max_tokens ?? 1024,
+                    })
+                    if (insertErr) {
+                      console.error(`[generate] INSERT error day ${day.day_number}:`, insertErr)
+                      controller.enqueue(encoder.encode(
+                        `data: ${JSON.stringify({ type: 'save_error', day: day.day_number, error: insertErr.message })}\n\n`
+                      ))
+                    }
+                  }
                 }
                 controller.enqueue(encoder.encode(
-                  `data: ${JSON.stringify({ type: 'days_saved', count: parsed.days.length, phase: parsed.phase })}\n\n`
+                  `data: ${JSON.stringify({ type: 'days_saved', count: (parsed.days as any[]).length, phase: parsed.phase })}\n\n`
                 ))
               }
             } catch (e) {

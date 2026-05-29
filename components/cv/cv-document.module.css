@@ -4,8 +4,8 @@
   flex: 1;
   overflow-x: auto;
   overflow-y: auto;
-  background: #1f1f23;
-  padding: 32px;
+  background: var(--tng-cream);
+  padding: 40px 32px;
 }
 
 .wrapper {
@@ -18,7 +18,9 @@
   width: 794px;
   background: #fff;
   padding: 60px 72px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 1px 4px rgba(20, 15, 8, 0.06), 0 4px 16px rgba(20, 15, 8, 0.08);
+  border: 0.5px solid var(--tng-rule);
+  border-radius: 4px;
   position: relative;
   z-index: 1;
   font-family: 'Roboto', sans-serif;

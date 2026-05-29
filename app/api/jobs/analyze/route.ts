@@ -31,8 +31,10 @@ Candidate profile:
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
     max_tokens: 1024,
-    system: `You are an international tech recruiter analyzing job fit for a candidate.
-Respond ONLY with a valid JSON object, no markdown, no explanation.`,
+    system: `You are an international tech recruiter analyzing job fit for a Brazilian candidate.
+Respond ONLY with a valid JSON object, no markdown, no explanation.
+IMPORTANT: The "analysis_notes" field must be written in Brazilian Portuguese (pt-BR).
+Keywords must be extracted verbatim from the job description — do NOT translate them.`,
     messages: [{
       role: 'user',
       content: `${profileContext}
@@ -45,9 +47,9 @@ Analyze fit and respond with this exact JSON:
 {
   "fit_score": <integer 0-100>,
   "apply_recommendation": <true|false>,
-  "strong_keywords": [<up to 8 keywords the candidate matches well>],
-  "weak_keywords": [<up to 4 keywords that are gaps>],
-  "analysis_notes": "<2-3 sentence summary of fit, strengths, and main gap>"
+  "strong_keywords": [<up to 8 exact keywords/skills from the job description that the candidate matches well>],
+  "weak_keywords": [<up to 4 exact keywords/skills from the job description that are gaps for the candidate>],
+  "analysis_notes": "<2-4 sentences in Brazilian Portuguese (pt-BR) summarizing fit, key strengths, and main gaps>"
 }`
     }]
   })
