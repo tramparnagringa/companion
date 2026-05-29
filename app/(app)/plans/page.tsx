@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { PlanCard } from '@/components/plans/plan-card'
+import { getStreak } from '@/lib/days'
 
 interface ChecklistItem {
   id: string
@@ -31,7 +32,7 @@ export default async function PlansPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const [notesRes, enrollmentsRes] = await Promise.all([
+  const [notesRes, enrollmentsRes, activitiesRes] = await Promise.all([
     (supabase as any)
       .from('action_notes')
       .select('id, title, content, type, day_number, checklist, completed, created_at, program_enrollment_id')
@@ -42,15 +43,29 @@ export default async function PlansPage() {
       .select('id, program:programs(name, slug)')
       .eq('user_id', user.id)
       .eq('status', 'active'),
+    supabase
+      .from('day_activities')
+      .select('day_number, status, completed_at')
+      .eq('user_id', user.id),
   ])
 
   const notes       = (notesRes.data ?? []) as ActionNote[]
   const enrollments = (enrollmentsRes.data ?? []) as unknown as Enrollment[]
+  const streak      = getStreak(activitiesRes.data ?? [])
 
-  const enrollmentMap = Object.fromEntries(
-    enrollments.map(e => [e.id, e.program])
-  )
+  const firstName = (user?.user_metadata?.full_name as string | undefined)?.split(' ')[0]
+    ?? (user?.email?.split('@')[0] ?? 'você')
 
+  const completedCount = notes.filter(n => {
+    if (n.completed) return true
+    const cl = n.checklist ?? []
+    return cl.length > 0 && cl.every(i => i.done)
+  }).length
+  const activeCount = notes.length - completedCount
+
+  const enrollmentMap = Object.fromEntries(enrollments.map(e => [e.id, e.program]))
+
+  // Group by program enrollment, free notes separate
   const byEnrollment: Record<string, ActionNote[]> = {}
   const freeNotes: ActionNote[] = []
 
@@ -63,30 +78,74 @@ export default async function PlansPage() {
     }
   }
 
-  const hasAny = notes.length > 0
+  const breadcrumb = (
+    <div className="topbar-crumb">
+      <strong>Planos de Ação</strong>
+      {notes.length > 0 && (
+        <>
+          <span className="sep crumb-detail">/</span>
+          <strong className="crumb-detail">
+            {notes.length} plano{notes.length !== 1 ? 's' : ''}
+          </strong>
+        </>
+      )}
+    </div>
+  )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Topbar title="Planos de Ação" subtitle="Todos os programas" />
+    <div className="page-col">
+      <Topbar title={breadcrumb} streak={streak} />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-        <div style={{ maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div className="page-scroll">
+        <div className="page-content">
 
-          {!hasAny && (
+          {/* ── Plans Hero ── */}
+          <div className="today-greeting">
+            <div className="today-greeting-hi">
+              Oi, <strong>{firstName}</strong> — seus planos de ação 📋
+            </div>
+            {notes.length > 0 && (
+              <div className="today-mini-stats">
+                <span><strong>{notes.length}</strong> plano{notes.length !== 1 ? 's' : ''} no total</span>
+                {activeCount > 0 && (
+                  <>
+                    <span className="today-mini-sep">·</span>
+                    <span><strong>{activeCount}</strong> em andamento</span>
+                  </>
+                )}
+                {completedCount > 0 && (
+                  <>
+                    <span className="today-mini-sep">·</span>
+                    <span><strong>{completedCount}</strong> concluído{completedCount !== 1 ? 's' : ''}</span>
+                  </>
+                )}
+                {streak > 1 && (
+                  <>
+                    <span className="today-mini-sep">·</span>
+                    <span>🔥 <strong>{streak}</strong> dias seguidos</span>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+
+          {notes.length === 0 && (
             <div style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center',
-              justifyContent: 'center', height: 300, gap: 10, color: 'var(--text3)',
+              justifyContent: 'center', height: 300, gap: 10,
             }}>
               <div style={{ fontSize: 32 }}>◈</div>
-              <div style={{ fontSize: 14, fontWeight: 500 }}>Nenhum plano ainda</div>
-              <div style={{ fontSize: 12, color: 'var(--text4)', textAlign: 'center', maxWidth: 280 }}>
-                Quando a IA gerar um plano de ação, ele aparecerá aqui com checkboxes para você acompanhar o progresso.
+              <div style={{ fontSize: 14, fontWeight: 500, color: 'var(--tng-ink-2)' }}>
+                Nenhum plano ainda
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--tng-ink-3)', textAlign: 'center', maxWidth: 300, lineHeight: 1.6 }}>
+                Quando a IA gerar um plano de ação durante o bootcamp, ele aparecerá aqui com checkboxes para acompanhar o progresso.
               </div>
             </div>
           )}
 
           {Object.entries(byEnrollment).map(([enrollmentId, enrollNotes]) => {
-            const prog = enrollmentMap[enrollmentId]
+            const prog   = enrollmentMap[enrollmentId]
             const active = enrollNotes.filter(n => {
               if (n.completed) return false
               const cl = n.checklist ?? []
@@ -99,21 +158,25 @@ export default async function PlansPage() {
             })
 
             return (
-              <section key={enrollmentId}>
+              <section key={enrollmentId} style={{ marginBottom: 40 }}>
                 <div style={{
-                  display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12,
-                  paddingBottom: 8, borderBottom: '0.5px solid var(--border)',
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  marginBottom: 16, paddingBottom: 10,
+                  borderBottom: '1px solid var(--tng-rule)',
                 }}>
                   <span style={{
-                    fontSize: 11, fontWeight: 600, color: 'var(--accent)',
-                    background: 'var(--accent-dim)', border: '0.5px solid rgba(228,253,139,.25)',
-                    padding: '2px 8px', borderRadius: 8,
+                    fontSize: 11, fontWeight: 700, color: 'var(--tng-purple-700)',
+                    background: 'var(--tng-purple-100)', border: '1px solid var(--tng-purple-300)',
+                    padding: '3px 10px', borderRadius: 999,
+                    fontFamily: 'var(--tng-font-mono)', letterSpacing: '0.08em', textTransform: 'uppercase',
                   }}>
                     {prog.name}
                   </span>
-                  <span style={{ fontSize: 11, color: 'var(--text4)' }}>{enrollNotes.length} planos</span>
+                  <span style={{ fontSize: 11, color: 'var(--tng-ink-3)', fontFamily: 'var(--tng-font-mono)' }}>
+                    {enrollNotes.length} plano{enrollNotes.length !== 1 ? 's' : ''}
+                  </span>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   {active.map(note => (
                     <PlanCard key={note.id} id={note.id} title={note.title} content={note.content}
                       type={note.type} dayNumber={note.day_number} checklist={note.checklist ?? []}
@@ -130,21 +193,25 @@ export default async function PlansPage() {
           })}
 
           {freeNotes.length > 0 && (
-            <section>
+            <section style={{ marginBottom: 40 }}>
               <div style={{
-                display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12,
-                paddingBottom: 8, borderBottom: '0.5px solid var(--border)',
+                display: 'flex', alignItems: 'center', gap: 10,
+                marginBottom: 16, paddingBottom: 10,
+                borderBottom: '1px solid var(--tng-rule)',
               }}>
                 <span style={{
-                  fontSize: 11, fontWeight: 600, color: 'var(--text3)',
-                  background: 'var(--bg3)', border: '0.5px solid var(--border2)',
-                  padding: '2px 8px', borderRadius: 8,
+                  fontSize: 11, fontWeight: 700, color: 'var(--tng-ink-3)',
+                  background: 'var(--tng-bone)', border: '1px solid var(--tng-rule)',
+                  padding: '3px 10px', borderRadius: 999,
+                  fontFamily: 'var(--tng-font-mono)', letterSpacing: '0.08em', textTransform: 'uppercase',
                 }}>
                   Geral
                 </span>
-                <span style={{ fontSize: 11, color: 'var(--text4)' }}>{freeNotes.length} planos</span>
+                <span style={{ fontSize: 11, color: 'var(--tng-ink-3)', fontFamily: 'var(--tng-font-mono)' }}>
+                  {freeNotes.length} plano{freeNotes.length !== 1 ? 's' : ''}
+                </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {freeNotes.map(note => (
                   <PlanCard key={note.id} id={note.id} title={note.title} content={note.content}
                     type={note.type} dayNumber={note.day_number} checklist={note.checklist ?? []}

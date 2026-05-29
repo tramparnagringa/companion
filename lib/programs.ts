@@ -1,7 +1,6 @@
 /**
  * Data access layer for programs, program_days, and user_programs.
- * This is the runtime replacement for the hardcoded DAYS array and
- * DAY_INSTRUCTIONS map. All program content comes from the DB.
+ * All program content comes from the DB (program_days.cards, ai_instructions, etc.).
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'

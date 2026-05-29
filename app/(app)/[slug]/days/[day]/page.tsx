@@ -22,6 +22,8 @@ export default async function ProgramDayPage({
   if (dayNumber > totalDays) notFound()
 
   const programDay = await getProgramDay(enrollment.program_id, dayNumber, supabase)
+  // No content for this day in the DB → this day doesn't exist for this program
+  if (!programDay) notFound()
 
   return (
     <DayPageContent

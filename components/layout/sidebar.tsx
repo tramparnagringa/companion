@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import type { User } from '@supabase/supabase-js'
 import { SidebarPanel } from './sidebar-panel'
 
@@ -16,7 +17,6 @@ interface SidebarProps {
   user: User | null
   role?: string
   enrollments?: Enrollment[]
-  hasPlans?: boolean
   tokenUsed?: number
   tokenTotal?: number
   plan?: string
@@ -28,7 +28,6 @@ export function Sidebar({
   user,
   role: _role = 'student',
   enrollments = [],
-  hasPlans = false,
   tokenUsed = 0,
   tokenTotal = 2_000_000,
   plan = 'Bootcamp',
@@ -59,16 +58,20 @@ export function Sidebar({
   const activeEnrollment = enrollments.find(e => e.slug === resolvedSlug) ?? enrollments[0] ?? null
   const activeSlug       = activeEnrollment?.slug ?? null
 
-  const usedPct    = tokenTotal > 0 ? Math.min((tokenUsed / tokenTotal) * 100, 100) : 0
-  const fillClass  = usedPct > 90 ? 'danger' : usedPct > 70 ? 'warn' : ''
+  const remainingTokens = tokenTotal - tokenUsed
+  const usedPct = tokenTotal > 0 ? Math.min((tokenUsed / tokenTotal) * 100, 100) : 0
+  const barColor = usedPct > 90
+    ? 'var(--tng-danger)'
+    : usedPct > 70
+    ? 'var(--tng-warn)'
+    : 'var(--tng-purple-700)'
+
   const initials   = user?.email?.slice(0, 2).toUpperCase() ?? 'TN'
-  const displayName = user?.user_metadata?.full_name ?? user?.email ?? 'Usuário'
+  const displayName = user?.user_metadata?.full_name?.split(' ')[0] ?? user?.email ?? 'Usuário'
 
   // Sub-page within a program (e.g. viewing day 5)
   const viewingDayMatch = pathname.match(/^\/[^/]+\/days\/(\d+)$/)
   const viewingDay      = viewingDayMatch ? parseInt(viewingDayMatch[1], 10) : null
-
-
 
   type NavItem = { id: string; label: string; href: string; badge?: string; icon: React.ReactNode }
 
@@ -80,19 +83,12 @@ export function Sidebar({
       items: [
         {
           id: 'today', label: 'Hoje', href: `/${slug}/today`,
-          badge: undefined,
-          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="12" height="12" rx="2" /><line x1="5" y1="6" x2="11" y2="6" /><line x1="5" y1="9" x2="8" y2="9" /></svg>,
+          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="8" cy="8" r="6.5"/><path d="M8 5v3l2 2"/></svg>,
         },
         {
           id: 'days', label: 'Programa', href: `/${slug}/days`,
-          badge: undefined,
-          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="5" height="5" rx="1" /><rect x="9" y="2" width="5" height="5" rx="1" /><rect x="2" y="9" width="5" height="5" rx="1" /><rect x="9" y="9" width="5" height="5" rx="1" /></svg>,
+          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="2" y="2" width="5" height="5" rx="1"/><rect x="9" y="2" width="5" height="5" rx="1"/><rect x="2" y="9" width="5" height="5" rx="1"/><rect x="9" y="9" width="5" height="5" rx="1"/></svg>,
         },
-        ...(hasPlans ? [{
-          id: 'plans', label: 'Planos de Ação', href: '/plans',
-          badge: undefined,
-          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="2" y="2" width="12" height="12" rx="1.5" /><polyline points="5,8 7,10 11,6" /></svg>,
-        }] : []),
       ],
     },
     {
@@ -100,8 +96,15 @@ export function Sidebar({
       items: [
         {
           id: 'chat', label: 'Mentor IA', href: '/chat',
-          badge: undefined,
-          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><path d="M2 3h12v8H9l-3 3V11H2z" /></svg>,
+          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M2 4a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H6l-3 3v-3H4a2 2 0 01-2-2z"/><circle cx="6" cy="7" r="0.6" fill="currentColor"/><circle cx="10" cy="7" r="0.6" fill="currentColor"/></svg>,
+        },
+        {
+          id: 'profile', label: 'Profile', href: '/profile',
+          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><circle cx="8" cy="5.5" r="2.5"/><path d="M3 14a5 5 0 0110 0"/></svg>,
+        },
+        {
+          id: 'plans', label: 'Planos de Ação', href: '/plans',
+          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><path d="M3 2h7l3 3v9H3z"/><path d="M5 8h6M5 11h6"/></svg>,
         },
       ],
     },
@@ -110,170 +113,217 @@ export function Sidebar({
       items: [
         {
           id: 'cv', label: 'CV Editor', href: '/cv',
-          badge: undefined,
-          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="3" y="1" width="10" height="14" rx="1.5" /><line x1="6" y1="5" x2="10" y2="5" /><line x1="6" y1="8" x2="10" y2="8" /><line x1="6" y1="11" x2="8" y2="11" /></svg>,
+          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="3" y="2" width="10" height="12" rx="1"/><path d="M5 5h6M5 8h6M5 11h4"/></svg>,
         },
         {
           id: 'board', label: 'Job Board', href: '/board',
-          badge: undefined,
-          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><rect x="1" y="3" width="4" height="11" rx="1" /><rect x="6" y="3" width="4" height="8" rx="1" /><rect x="11" y="3" width="4" height="5" rx="1" /></svg>,
+          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="16" height="16"><rect x="2" y="5" width="12" height="9" rx="1"/><path d="M6 5V3a1 1 0 011-1h2a1 1 0 011 1v2"/></svg>,
         },
-        {
-          id: 'profile', label: 'Dossier', href: '/profile',
-          badge: undefined,
-          icon: <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14 }}><circle cx="8" cy="5" r="3" /><path d="M2 14c0-3.3 2.7-6 6-6s6 2.7 6 6" /></svg>,
-        },
+
       ],
     },
   ]
 
   return (
     <SidebarPanel isOpen={isOpen}>
-      {/* Top */}
-      <div style={{ padding: '16px 14px 12px', borderBottom: '0.5px solid var(--border)' }}>
-        <div style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: '.12em',
-          textTransform: 'uppercase', color: 'var(--accent)',
-          display: 'flex', alignItems: 'center', gap: 6, marginBottom: 14,
-        }}>
-          <span style={{ width: 5, height: 5, background: 'var(--accent)', borderRadius: '50%', display: 'inline-block' }} />
-          TNG Companion
-          {onClose && (
-            <button
-              onClick={onClose}
-              className="sidebar-close-btn"
-              style={{
-                marginLeft: 'auto', background: 'none', border: 'none',
-                cursor: 'pointer', color: 'var(--text3)', padding: 4,
-                display: 'none', alignItems: 'center', justifyContent: 'center',
-              }}
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <line x1="2" y1="2" x2="12" y2="12" />
-                <line x1="12" y1="2" x2="2" y2="12" />
-              </svg>
-            </button>
-          )}
+      {/* Brand header */}
+      <div style={{
+        padding: '20px 18px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+      }}>
+        {/* Logo mark */}
+        <img
+          src="/logo-mark.svg"
+          alt="TNG"
+          width={30}
+          height={30}
+          style={{ flexShrink: 0 }}
+        />
+        {/* Brand text */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            fontFamily: "'Bricolage Grotesque', sans-serif",
+            fontWeight: 700,
+            fontSize: 13,
+            letterSpacing: '0.03em',
+            color: 'var(--tng-purple-700)',
+            lineHeight: 1.1,
+            textTransform: 'uppercase',
+          }}>
+            Trampar na Gringa
+          </div>
+          <div style={{
+            fontFamily: 'var(--mono)',
+            fontSize: 9,
+            textTransform: 'uppercase',
+            letterSpacing: '0.18em',
+            color: 'var(--tng-coral)',
+            marginTop: 3,
+          }}>
+            Companion
+          </div>
         </div>
 
-        {/* Program switcher — visible when enrolled in at least one program */}
-        {enrollments.length >= 1 && (
-          <div style={{ marginTop: 10 }}>
-            <div style={{
-              fontSize: 10, fontWeight: 500, letterSpacing: '.08em',
-              textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 4,
-            }}>
-              Programa
-            </div>
-            <div style={{ position: 'relative' }}>
-              {enrollments.length === 1 ? (
-                <div style={{
-                  width: '100%', padding: '7px 10px',
-                  borderRadius: 'var(--rsm)', fontSize: 12, fontWeight: 500,
-                  background: 'var(--accent-dim)',
-                  border: '0.5px solid rgba(228,253,139,.25)',
-                  color: 'var(--accent)',
-                }}>
-                  {enrollments[0].name}
-                </div>
-              ) : (
-                <>
-                  <select
-                    value={activeSlug ?? ''}
-                    onChange={e => router.push(`/${e.target.value}/today`)}
-                    style={{
-                      width: '100%', padding: '7px 28px 7px 10px',
-                      borderRadius: 'var(--rsm)', fontSize: 12, fontWeight: 500,
-                      background: 'var(--accent-dim)',
-                      border: '0.5px solid rgba(228,253,139,.25)',
-                      color: 'var(--accent)', cursor: 'pointer', outline: 'none',
-                      appearance: 'none', WebkitAppearance: 'none',
-                      fontFamily: 'inherit',
-                    }}
-                  >
-                    {enrollments.map(e => (
-                      <option key={e.id} value={e.slug} style={{ background: 'var(--bg3)', color: 'var(--text)' }}>
-                        {e.name}
-                      </option>
-                    ))}
-                  </select>
-                  {/* Chevron */}
-                  <svg
-                    viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5"
-                    style={{
-                      width: 11, height: 11, position: 'absolute', right: 8,
-                      top: '50%', transform: 'translateY(-50%)',
-                      color: 'var(--accent)', pointerEvents: 'none',
-                    }}
-                  >
-                    <polyline points="4,6 8,10 12,6" />
-                  </svg>
-                </>
-              )}
-            </div>
-          </div>
+        {/* Close button — mobile only */}
+        {onClose && (
+          <button
+            onClick={onClose}
+            className="sidebar-close-btn"
+            style={{
+              background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--tng-ink-3)', padding: 4,
+              display: 'none', alignItems: 'center', justifyContent: 'center',
+              borderRadius: 6,
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <line x1="2" y1="2" x2="12" y2="12" />
+              <line x1="12" y1="2" x2="2" y2="12" />
+            </svg>
+          </button>
         )}
       </div>
+      {/* Divider — stops 18px before the right edge, matching the prototype */}
+      <div style={{ height: 1, background: 'var(--tng-rule)', marginLeft: 18, marginRight: 18 }} />
 
-      {/* Nav */}
-      <div style={{ flex: 1, overflowY: 'auto' }}>
+      {/* Program switcher */}
+      {enrollments.length >= 1 && (
+        <div style={{ padding: '26px 18px 0' }}>
+          <div style={{
+            fontFamily: 'var(--mono)',
+            fontSize: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.18em',
+            color: 'var(--tng-ink-3)',
+            marginBottom: 6,
+            paddingLeft: 2,
+          }}>
+            Programa
+          </div>
+          <div style={{ position: 'relative' }}>
+            {enrollments.length === 1 ? (
+              <div style={{
+                width: '100%', padding: '9px 12px',
+                borderRadius: 10, fontSize: 13, fontWeight: 500,
+                background: 'var(--tng-cream)',
+                border: '1px solid var(--tng-rule)',
+                color: 'var(--tng-ink)',
+              }}>
+                {enrollments[0].name}
+              </div>
+            ) : (
+              <>
+                <select
+                  value={activeSlug ?? ''}
+                  onChange={e => router.push(`/${e.target.value}/today`)}
+                  style={{
+                    width: '100%', padding: '9px 28px 9px 12px',
+                    borderRadius: 10, fontSize: 13, fontWeight: 500,
+                    background: 'var(--tng-cream)',
+                    border: '1px solid var(--tng-rule)',
+                    color: 'var(--tng-ink)',
+                    cursor: 'pointer', outline: 'none',
+                    appearance: 'none', WebkitAppearance: 'none',
+                    fontFamily: 'inherit',
+                    transition: 'border-color 120ms',
+                  }}
+                >
+                  {enrollments.map(e => (
+                    <option key={e.id} value={e.slug}>{e.name}</option>
+                  ))}
+                </select>
+                <svg
+                  viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7"
+                  style={{
+                    width: 12, height: 12, position: 'absolute', right: 10,
+                    top: '50%', transform: 'translateY(-50%)',
+                    color: 'var(--tng-ink-3)', pointerEvents: 'none',
+                  }}
+                >
+                  <polyline points="4,6 8,10 12,6" />
+                </svg>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div style={{ flex: 1, overflowY: 'auto', paddingTop: 6 }}>
         {NAV_SECTIONS.map(({ section, items }) => (
-          <div key={section} style={{ padding: '10px 8px 4px' }}>
+          <div key={section} style={{ padding: '14px 10px 4px' }}>
+            {/* Group label */}
             <div style={{
-              fontSize: 10, fontWeight: 500, letterSpacing: '.08em',
-              textTransform: 'uppercase', color: 'var(--text4)',
-              padding: '0 6px', marginBottom: 3,
+              fontFamily: 'var(--mono)',
+              fontSize: 10,
+              textTransform: 'uppercase',
+              letterSpacing: '0.18em',
+              color: 'var(--tng-ink-3)',
+              padding: '0 10px 8px',
             }}>
               {section}
             </div>
+
+            {/* Nav items */}
             {items.map(item => {
-              // Active if the pathname starts with the item's href (handles sub-routes)
               const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
               return (
                 <div key={item.id}>
-                  <button
-                    onClick={() => router.push(item.href)}
+                  <Link
+                    href={item.href}
+                    onClick={() => onClose?.()}
                     style={{
-                      display: 'flex', alignItems: 'center', gap: 8,
-                      padding: '7px 8px', borderRadius: 'var(--rsm)',
-                      cursor: 'pointer', fontSize: 13, width: '100%',
-                      border: 'none', background: isActive ? 'var(--accent-dim)' : 'none',
-                      color: isActive ? 'var(--accent)' : 'var(--text2)',
-                      transition: 'all .12s', textAlign: 'left',
+                      display: 'flex', alignItems: 'center', gap: 10,
+                      padding: '9px 10px', borderRadius: 8, width: '100%',
+                      fontSize: 14, fontWeight: 500,
+                      textDecoration: 'none', transition: 'all 120ms',
+                      background: isActive ? 'var(--tng-purple-700)' : 'none',
+                      color: isActive ? 'var(--tng-cream)' : 'var(--tng-ink)',
                     }}
                     onMouseEnter={e => {
                       if (!isActive) {
-                        (e.currentTarget as HTMLElement).style.background = 'var(--bg3)'
-                        ;(e.currentTarget as HTMLElement).style.color = 'var(--text)'
+                        (e.currentTarget as HTMLElement).style.background = 'var(--tng-bone)'
                       }
                     }}
                     onMouseLeave={e => {
                       if (!isActive) {
                         (e.currentTarget as HTMLElement).style.background = 'none'
-                        ;(e.currentTarget as HTMLElement).style.color = 'var(--text2)'
                       }
                     }}
                   >
-                    {item.icon}
+                    {/* Icon */}
+                    <span style={{
+                      width: 18, height: 18,
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                      flexShrink: 0,
+                      color: isActive ? 'var(--tng-lime)' : 'var(--tng-ink-3)',
+                    }}>
+                      {item.icon}
+                    </span>
                     {item.label}
                     {item.badge && (
                       <span style={{
-                        marginLeft: 'auto', fontSize: 10, fontWeight: 500,
-                        background: isActive ? 'rgba(228,253,139,.18)' : 'var(--bg4)',
-                        color: isActive ? 'var(--accent)' : 'var(--text3)',
+                        marginLeft: 'auto', fontSize: 10, fontWeight: 600,
+                        background: isActive ? 'rgba(201,242,61,.18)' : 'var(--tng-bone)',
+                        color: isActive ? 'var(--tng-lime)' : 'var(--tng-ink-3)',
                         padding: '1px 6px', borderRadius: 10,
+                        fontFamily: 'var(--mono)', letterSpacing: '0.06em',
                       }}>
                         {item.badge}
                       </span>
                     )}
-                  </button>
+                  </Link>
 
                   {/* Sub-item: currently viewing a specific day */}
                   {item.id === 'days' && viewingDay !== null && (
                     <div style={{
                       display: 'flex', alignItems: 'center', gap: 6,
-                      padding: '5px 8px 5px 28px', borderRadius: 'var(--rsm)',
-                      fontSize: 12, color: 'var(--accent)', background: 'var(--accent-dim)',
+                      padding: '5px 10px 5px 38px', borderRadius: 8,
+                      fontSize: 12, color: 'var(--tng-purple-700)',
+                      background: 'var(--tng-purple-100)',
+                      margin: '2px 0',
                     }}>
                       <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 11, height: 11, opacity: 0.5 }}>
                         <polyline points="4,8 8,12 12,8" />
@@ -289,28 +339,55 @@ export function Sidebar({
         ))}
       </div>
 
-      {/* Token widget */}
+      {/* Token / Credits widget */}
       <div style={{
-        margin: 'auto 14px 14px', background: 'var(--bg3)',
-        border: '0.5px solid var(--border)', borderRadius: 'var(--r)',
-        padding: '12px 13px',
+        margin: '0 14px 14px',
+        background: 'var(--tng-cream)',
+        border: '1px solid var(--tng-rule)',
+        borderRadius: 12,
+        padding: '13px 15px',
       }}>
-        <div style={{ marginBottom: 8 }}>
-          <span style={{ fontSize: 11, color: 'var(--text3)' }}>Créditos</span>
+        <div style={{
+          display: 'flex', alignItems: 'baseline', justifyContent: 'space-between',
+          marginBottom: 8,
+        }}>
+          <span style={{
+            fontFamily: 'var(--mono)',
+            fontSize: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.18em',
+            color: 'var(--tng-ink-3)',
+          }}>
+            Créditos de IA
+          </span>
+          <span style={{
+            fontFamily: 'var(--mono)',
+            fontSize: 11, fontWeight: 600,
+            color: 'var(--tng-purple-700)',
+          }}>
+            {Math.round(100 - usedPct)}%
+          </span>
         </div>
-        <div style={{ height: 4, background: 'var(--bg4)', borderRadius: 2, overflow: 'hidden', marginBottom: 6 }}>
+        <div style={{ height: 4, background: 'var(--tng-rule)', borderRadius: 2, overflow: 'hidden', marginBottom: 7 }}>
           <div style={{
-            height: '100%', borderRadius: 2, transition: 'width .4s',
+            height: '100%', borderRadius: 2,
             width: `${100 - usedPct}%`,
-            background: fillClass === 'danger' ? 'var(--red)' : fillClass === 'warn' ? 'var(--orange)' : 'var(--accent)',
+            background: barColor,
+            transition: 'width .4s, background .2s',
           }} />
         </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text3)', fontFamily: 'var(--mono)' }}>
-          <span>{(tokenTotal - tokenUsed).toLocaleString('pt-BR')} restantes</span>
-          <span>{tokenTotal.toLocaleString('pt-BR')}</span>
+        <div style={{
+          display: 'flex', justifyContent: 'space-between',
+          fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--tng-ink-3)',
+        }}>
+          <span>
+            <strong style={{ color: 'var(--tng-ink)', fontWeight: 600 }}>
+              {remainingTokens.toLocaleString('pt-BR')}
+            </strong>{' '}restantes
+          </span>
+          <span>de {tokenTotal.toLocaleString('pt-BR')}</span>
         </div>
       </div>
-
     </SidebarPanel>
   )
 }

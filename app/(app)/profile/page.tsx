@@ -1,5 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
+import { getStreak } from '@/lib/days'
 
 export default async function ProfilePage() {
   const supabase = await createServerClient()
@@ -12,412 +13,627 @@ export default async function ProfilePage() {
     { data: userMeta },
     { data: days },
     { data: activeCV },
+    { data: actionNotes },
   ] = await Promise.all([
     supabase.from('candidate_profiles').select('*').eq('user_id', user!.id).single(),
     supabase.from('keywords').select('word, frequency').eq('user_id', user!.id).order('frequency', { ascending: false }).limit(40),
     supabase.from('jobs').select('status').eq('user_id', user!.id),
-    supabase.from('profiles').select('full_name').eq('id', user!.id).single(),
-    supabase.from('day_activities').select('day_number, status').eq('user_id', user!.id).order('day_number'),
+    supabase.from('profiles').select('full_name, avatar_url').eq('id', user!.id).single(),
+    supabase.from('day_activities').select('day_number, status, completed_at').eq('user_id', user!.id).order('day_number'),
     supabase.from('cv_versions').select('content').eq('user_id', user!.id).eq('is_active', true).single(),
+    (supabase as any).from('action_notes').select('id').eq('user_id', user!.id),
   ])
 
-  const completionFields = candidate ? [
-    candidate.target_role, candidate.seniority, candidate.tech_stack?.length,
-    candidate.target_regions?.length, candidate.value_proposition,
-    candidate.linkedin_headline, candidate.linkedin_about,
-    candidate.ai_fluency_statements?.length,
-  ] : []
-  const completion = completionFields.length
-    ? Math.round(completionFields.filter(Boolean).length / completionFields.length * 100)
-    : 0
-
-  const donedays   = days?.filter(d => d.status === 'done').length ?? 0
-  const totalJobs  = jobs?.length ?? 0
+  const streak      = getStreak(days ?? [])
+  const donedays    = days?.filter(d => d.status === 'done').length ?? 0
+  const totalJobs   = jobs?.length ?? 0
   const appliedJobs = jobs?.filter(j => ['applied','interviewing','offer'].includes(j.status ?? '')).length ?? 0
-  const topKeywords = keywords?.slice(0, 20) ?? []
+  const plansCount  = (actionNotes as { id: string }[] | null)?.length ?? 0
 
-  const cvName = (activeCV?.content as { personal?: { full_name?: string } } | null)?.personal?.full_name
+  type CVPersonal = { full_name?: string; position?: string }
+  const cvPersonal  = (activeCV?.content as { personal?: CVPersonal } | null)?.personal
+  const cvName      = cvPersonal?.full_name
+  const cvPosition  = cvPersonal?.position
   const displayName = cvName ?? userMeta?.full_name ?? user?.email?.split('@')[0] ?? '?'
-  const initials = displayName.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase()
+  const avatarUrl = (userMeta as { avatar_url?: string } | null)?.avatar_url
+    ?? (user?.user_metadata?.avatar_url as string | undefined)
+
+  // ── Strengths & Gaps ──────────────────────────────────────────
+  const strengths: string[] = []
+  const gaps: { text: string; day: string }[] = []
+
+  if (candidate) {
+    if (candidate.value_proposition)
+      strengths.push('Proposta de valor elaborada')
+    if (candidate.linkedin_headline)
+      strengths.push('Headline do LinkedIn pronta')
+    if (candidate.linkedin_about)
+      strengths.push('About do LinkedIn redigido')
+    if ((keywords?.length ?? 0) >= 5)
+      strengths.push(`${keywords!.length} keywords mapeadas`)
+    if (candidate.target_regions?.length)
+      strengths.push(`Mercado-alvo definido`)
+    if (candidate.tech_stack?.length)
+      strengths.push(`${candidate.tech_stack.length} habilidades documentadas`)
+    if (appliedJobs > 0)
+      strengths.push(`${appliedJobs} candidatura${appliedJobs !== 1 ? 's' : ''} ativa${appliedJobs !== 1 ? 's' : ''}`)
+    if (candidate.salary_min || candidate.salary_max)
+      strengths.push('Âncora salarial definida')
+    if (candidate.value_proposition_alternatives?.length)
+      strengths.push('Variações de pitch prontas')
+    if (plansCount > 0)
+      strengths.push(`${plansCount} plano${plansCount !== 1 ? 's' : ''} de ação`)
+
+    if (!candidate.value_proposition)
+      gaps.push({ text: 'Elaborar proposta de valor', day: 'Dia 6' })
+    if (!candidate.linkedin_headline)
+      gaps.push({ text: 'Criar headline do LinkedIn', day: 'Dia 8' })
+    if (!candidate.linkedin_about)
+      gaps.push({ text: 'Escrever About do LinkedIn', day: 'Dia 9' })
+    if (!candidate.tech_stack?.length)
+      gaps.push({ text: 'Mapear habilidades e stack', day: 'Dia 3' })
+    if (!candidate.target_regions?.length)
+      gaps.push({ text: 'Definir mercado-alvo e regiões', day: 'Dia 2' })
+    if ((keywords?.length ?? 0) < 5)
+      gaps.push({ text: 'Construir banco de keywords', day: 'Dias 4–5' })
+    if (!candidate.salary_min && !candidate.salary_max)
+      gaps.push({ text: 'Definir âncora salarial', day: 'Dia 27' })
+  }
+
+  // ── Progress metrics ─────────────────────────────────────────
+  const coreTotal = 7   // number of possible gap items
+  const coreDone  = coreTotal - gaps.length
+  const corePct   = Math.round((coreDone / coreTotal) * 100)
+  const progressSentiment =
+    coreDone >= 7 ? 'Dossier completo — você está pronto 🎯'
+    : coreDone >= 5 ? 'Ótimo progresso, falta pouco'
+    : coreDone >= 3 ? 'Fundações no lugar — continue assim'
+    : 'Primeiros passos dados'
+
+  const workPrefLabel = candidate?.work_preference === 'remote'
+    ? '🌐 Remoto global'
+    : candidate?.work_preference === 'relocation'
+    ? '✈️ Relocação'
+    : candidate?.work_preference === 'both'
+    ? '🌐 Remoto / Relocação'
+    : null
+
+  const identityParts = [
+    candidate?.target_role,
+    candidate?.seniority,
+    candidate?.years_experience ? `${candidate.years_experience} anos` : null,
+    workPrefLabel,
+  ].filter(Boolean)
+
+  const topKeywords = keywords?.slice(0, 28) ?? []
+  const maxFreq = Math.max(...(topKeywords.map(k => k.frequency ?? 1)), 1)
+
+  const breadcrumb = (
+    <div className="topbar-crumb">
+      <strong>Profile</strong>
+    </div>
+  )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      <Topbar title="AI Profile" subtitle="Seu dossier de candidato" />
+    <div className="page-col">
+      <Topbar title={breadcrumb} streak={streak} />
 
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80 }}>
+
         {!candidate ? (
-          <div style={{
+          <div className="dossier-band" style={{
             display: 'flex', flexDirection: 'column', alignItems: 'center',
-            justifyContent: 'center', height: 300, gap: 10, color: 'var(--text3)',
+            justifyContent: 'center', minHeight: 300, gap: 12, paddingTop: 56,
           }}>
-            <div style={{ fontSize: 32 }}>◎</div>
-            <div style={{ fontSize: 14, fontWeight: 500 }}>Dossier vazio</div>
-            <div style={{ fontSize: 12, color: 'var(--text4)', textAlign: 'center', maxWidth: 240 }}>
-              Complete o Dia 1 com o assistente para criar seu perfil.
+            <div style={{ fontSize: 36, opacity: 0.3 }}>◎</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--tng-ink-2)' }}>Dossier ainda vazio</div>
+            <div style={{ fontSize: 13, color: 'var(--tng-ink-3)', textAlign: 'center', maxWidth: 260, lineHeight: 1.7 }}>
+              Complete o Dia 1 com o assistente — seu perfil será montado automaticamente a partir das suas conversas.
             </div>
           </div>
-        ) : (
-          <div style={{ maxWidth: 860, display: 'flex', flexDirection: 'column', gap: 14 }}>
+        ) : (<>
 
-            {/* ── HERO CARD ── */}
-            <div style={{
-              background: 'var(--bg2)', border: '0.5px solid var(--border)',
-              borderRadius: 'var(--r)', padding: '22px 24px',
-              display: 'grid', gridTemplateColumns: '1fr auto', gap: 20,
-              alignItems: 'center',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: '50%', flexShrink: 0,
-                  background: 'var(--accent-dim)', border: '1.5px solid rgba(228,253,139,.4)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 18, fontWeight: 700, color: 'var(--accent)',
-                }}>
-                  {initials}
-                </div>
+          {/* ── BAND 1 · HERO ───────────────────────────────── */}
+          <Band first>
+            {(() => {
+              const introText = candidate.value_proposition_alternatives?.[0] ?? candidate.value_proposition ?? null
+              return (
                 <div>
-                  <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
+                  {/* Avatar — only if exists */}
+                  {avatarUrl && (
+                    <img
+                      src={avatarUrl}
+                      alt={displayName}
+                      width={94}
+                      height={94}
+                      style={{
+                        width: 94, height: 94, borderRadius: 999,
+                        objectFit: 'cover',
+                        border: '2px solid var(--tng-rule)',
+                        display: 'block',
+                        marginBottom: 28,
+                      }}
+                    />
+                  )}
+
+                  {/* Name */}
+                  <h1 style={{
+                    fontSize: 40, fontFamily: 'var(--tng-font-display)',
+                    fontWeight: 700, color: 'var(--tng-ink)', lineHeight: 1.1,
+                    letterSpacing: '-0.025em', margin: '0 0 20px',
+                  }}>
                     {displayName}
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                    {candidate.target_role && (
-                      <Pill text={candidate.target_role} color="var(--accent)" bg="var(--accent-dim)" />
-                    )}
-                    {candidate.seniority && (
-                      <Pill text={candidate.seniority} color="var(--text2)" bg="var(--bg3)" />
-                    )}
-                    {candidate.work_preference && (
-                      <Pill
-                        text={candidate.work_preference === 'remote' ? '🌍 Remoto global' : candidate.work_preference === 'relocation' ? '✈️ Relocação' : '🌍 Remoto / Relocação'}
-                        color="var(--purple)"
-                        bg="var(--bg3)"
-                        border="rgba(168,85,247,.25)"
-                      />
-                    )}
-                    {candidate.years_experience && (
-                      <Pill text={`${candidate.years_experience} anos exp.`} color="var(--text3)" bg="var(--bg3)" />
-                    )}
-                  </div>
-                </div>
-              </div>
+                  </h1>
 
-              {/* Completion */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                <svg width={64} height={64} viewBox="0 0 64 64">
-                  <circle cx={32} cy={32} r={26} fill="none" stroke="var(--bg3)" strokeWidth={4} />
-                  <circle
-                    cx={32} cy={32} r={26} fill="none"
-                    stroke={completion >= 80 ? '#4ade80' : completion >= 40 ? 'var(--accent)' : 'var(--border2)'}
-                    strokeWidth={4}
-                    strokeDasharray={`${(completion / 100) * 2 * Math.PI * 26} ${2 * Math.PI * 26}`}
-                    strokeLinecap="round"
-                    transform="rotate(-90 32 32)"
-                    style={{ transition: 'stroke-dasharray .6s ease' }}
-                  />
-                  <text x={32} y={36} textAnchor="middle" fontSize={13} fontWeight={700}
-                    fill={completion >= 80 ? '#4ade80' : completion >= 40 ? 'var(--accent)' : 'var(--text3)'}>
-                    {completion}%
-                  </text>
-                </svg>
-                <span style={{ fontSize: 10, color: 'var(--text4)', letterSpacing: '.05em' }}>DOSSIER</span>
-              </div>
-            </div>
+                  {/* Intro tagline — best alternative or main VP */}
+                  {introText && (
+                    <div style={{
+                      fontSize: 22, fontFamily: 'var(--tng-font-serif)', fontStyle: 'italic',
+                      color: 'var(--tng-ink-2)', lineHeight: 1.6, marginBottom: 28,
+                    }}>
+                      {renderRichText(introText)}
+                    </div>
+                  )}
 
-            {/* ── STATS ROW ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
-              <StatCard
-                value={donedays}
-                total={30}
-                label="Dias concluídos"
-                color="#4ade80"
-                showBar
-              />
-              <StatCard
-                value={keywords?.length ?? 0}
-                label="Keywords no banco"
-                color="var(--accent)"
-              />
-              <StatCard
-                value={totalJobs}
-                label="Vagas no board"
-                color="var(--purple)"
-              />
-              <StatCard
-                value={appliedJobs}
-                label="Candidaturas"
-                color="var(--teal, #2dd4bf)"
-              />
-            </div>
-
-            {/* ── 2-COL GRID ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-
-              {/* Target Market */}
-              <Card title="Mercado-Alvo">
-                {candidate.target_regions?.length ? (
-                  <FieldBlock label="Regiões">
-                    <TagRow tags={candidate.target_regions} color="#2dd4bf" />
-                  </FieldBlock>
-                ) : null}
-                {candidate.target_sectors?.length ? (
-                  <FieldBlock label="Setores">
-                    <TagRow tags={candidate.target_sectors} color="var(--text2)" />
-                  </FieldBlock>
-                ) : null}
-                {!candidate.target_regions?.length && !candidate.target_sectors?.length && (
-                  <Empty text="Definir no Dia 2" />
-                )}
-              </Card>
-
-              {/* Tech Stack */}
-              <Card title="Tech Stack">
-                {candidate.tech_stack?.length ? (
-                  <TagRow tags={candidate.tech_stack} color="var(--accent)" />
-                ) : (
-                  <Empty text="Definir no Dia 3" />
-                )}
-              </Card>
-            </div>
-
-            {/* ── VALUE PROPOSITION ── */}
-            {candidate.value_proposition ? (
-              <Card title="Proposta de Valor">
-                <div style={{
-                  fontSize: 14, lineHeight: 1.7, color: 'var(--text)',
-                  borderLeft: '2px solid var(--accent)', paddingLeft: 16,
-                  fontStyle: 'italic',
-                }}>
-                  "{candidate.value_proposition}"
-                </div>
-                {candidate.value_proposition_alternatives?.length ? (
-                  <div style={{ marginTop: 14 }}>
-                    <FieldLabel>Variações</FieldLabel>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                      {candidate.value_proposition_alternatives.map((alt, i) => (
-                        <div key={i} style={{
-                          fontSize: 12, color: 'var(--text3)', lineHeight: 1.6,
-                          paddingLeft: 14, borderLeft: '0.5px solid var(--border2)',
-                        }}>
-                          {alt}
-                        </div>
+                  {/* Identity meta */}
+                  {identityParts.length > 0 && (
+                    <div style={{
+                      fontSize: 13, color: 'var(--tng-ink-3)', marginBottom: 20,
+                      display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4px 4px',
+                    }}>
+                      {identityParts.map((p, i) => (
+                        <span key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {i > 0 && <span style={{ color: 'var(--tng-mute)', fontSize: 13, lineHeight: 1 }}>·</span>}
+                          {p}
+                        </span>
                       ))}
                     </div>
-                  </div>
-                ) : null}
-              </Card>
-            ) : (
-              <Card title="Proposta de Valor">
-                <Empty text="Construir no Dia 6" />
-              </Card>
-            )}
+                  )}
 
-            {/* ── LINKEDIN ── */}
-            {(candidate.linkedin_headline || candidate.linkedin_about) && (
-              <Card title="LinkedIn">
-                {candidate.linkedin_headline && (
-                  <div style={{ marginBottom: 14 }}>
-                    <FieldLabel>Headline</FieldLabel>
-                    <div style={{
-                      fontSize: 13, fontWeight: 500, color: 'var(--text)', lineHeight: 1.5,
-                      padding: '10px 13px', background: 'var(--bg3)', borderRadius: 6,
-                      border: '0.5px solid var(--border2)', marginTop: 5,
-                    }}>
-                      {candidate.linkedin_headline}
+                  {/* Region + sector pills */}
+                  {((candidate.target_sectors?.length ?? 0) > 0 || (candidate.target_regions?.length ?? 0) > 0) && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 28 }}>
+                      {candidate.target_regions?.map(r => (
+                        <span key={r} style={{
+                          fontSize: 11, padding: '6px 14px', borderRadius: 999,
+                          background: 'var(--tng-purple-100)', color: 'var(--tng-purple-700)',
+                          border: '1px solid var(--tng-purple-300)',
+                          fontFamily: 'var(--tng-font-mono)', fontWeight: 700, letterSpacing: '0.08em',
+                        }}>{r}</span>
+                      ))}
+                      {candidate.target_sectors?.map(s => (
+                        <span key={s} style={{
+                          fontSize: 11, padding: '6px 14px', borderRadius: 999,
+                          background: 'var(--tng-bone)', color: 'var(--tng-ink-2)',
+                          border: '1px solid var(--tng-rule)',
+                          fontFamily: 'var(--tng-font-mono)', fontWeight: 700, letterSpacing: '0.08em',
+                        }}>{s}</span>
+                      ))}
                     </div>
+                  )}
+
+                  {/* Mini stats — design system class */}
+                  <div className="today-mini-stats">
+                    <span><strong>{donedays}</strong> dias</span>
+                    {(keywords?.length ?? 0) > 0 && <><span className="today-mini-sep">·</span><span><strong>{keywords!.length}</strong> keywords</span></>}
+                    {totalJobs > 0 && <><span className="today-mini-sep">·</span><span><strong>{totalJobs}</strong> vaga{totalJobs !== 1 ? 's' : ''}</span></>}
+                    {plansCount > 0 && <><span className="today-mini-sep">·</span><span><strong>{plansCount}</strong> plano{plansCount !== 1 ? 's' : ''}</span></>}
+                    {streak > 1 && <><span className="today-mini-sep">·</span><span>🔥 <strong>{streak}</strong> dias seguidos</span></>}
+                  </div>
+                </div>
+              )
+            })()}
+          </Band>
+
+          {/* ── BAND 2 · PROPOSTA DE VALOR ─── bone ─────────── */}
+          <Band bg="var(--tng-bone)">
+            <Section label="Proposta de Valor" labelColor="var(--tng-coral-text)" labelBg="rgba(255,107,53,0.11)">
+              {candidate.value_proposition ? (<>
+                <blockquote style={{
+                  fontSize: 32, fontFamily: 'var(--tng-font-serif)', fontStyle: 'italic',
+                  color: 'var(--tng-ink)', lineHeight: 1.45, margin: 0,
+                  borderLeft: '3px solid var(--tng-coral)', paddingLeft: 28,
+                }}>
+                  &ldquo;{renderRichText(candidate.value_proposition)}&rdquo;
+                </blockquote>
+                {candidate.value_proposition_alternatives && candidate.value_proposition_alternatives.length > 0 && (
+                  <div style={{ marginTop: 32, display: 'flex', flexDirection: 'column', gap: 14 }}>
+                    <div style={{ fontSize: 11, color: 'var(--tng-ink-3)', fontFamily: 'var(--tng-font-mono)', fontWeight: 700, letterSpacing: '0.10em', textTransform: 'uppercase' }}>
+                      Variações
+                    </div>
+                    {candidate.value_proposition_alternatives.map((alt, i) => (
+                      <div key={i} style={{
+                        fontSize: 20, color: 'var(--tng-ink-2)', lineHeight: 1.6,
+                        paddingLeft: 20, borderLeft: '2px solid var(--tng-rule)',
+                        fontFamily: 'var(--tng-font-serif)', fontStyle: 'italic',
+                      }}>{renderRichText(alt)}</div>
+                    ))}
+                  </div>
+                )}
+              </>) : (
+                <div style={{ fontSize: 16, color: 'var(--tng-ink-3)', lineHeight: 1.7, fontStyle: 'italic', fontFamily: 'var(--tng-font-serif)' }}>
+                  Ainda não elaborada — a peça mais importante do seu posicionamento. Será construída no Dia 6.
+                </div>
+              )}
+            </Section>
+          </Band>
+
+          {/* ── BAND 3 · O QUE VOCÊ FAZ · habilidades + keywords ─── paper ── */}
+          {(candidate.tech_stack?.length || topKeywords.length > 0) && (
+            <Band bg="var(--tng-paper)">
+              {candidate.tech_stack && candidate.tech_stack.length > 0 && (
+                <Section label="Habilidades" labelBg="rgba(0,0,0,0.06)">
+                  <div style={{ fontSize: 18, color: 'var(--tng-ink-2)', lineHeight: 1.9, letterSpacing: '-0.01em' }}>
+                    {candidate.tech_stack.join(' · ')}
+                  </div>
+                </Section>
+              )}
+              {topKeywords.length > 0 && (
+                <Section label={`Keywords · ${keywords?.length ?? 0}`} labelColor="#5E7A0F" labelBg="rgba(94,122,15,0.10)" style={{ marginTop: candidate.tech_stack?.length ? 48 : 0 }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 14px', alignItems: 'baseline' }}>
+                    {topKeywords.map(kw => {
+                      const freq   = kw.frequency ?? 1
+                      const weight = freq / maxFreq
+                      const size   = Math.round(14 + weight * 8)
+                      const opacity = 0.45 + weight * 0.55
+                      return (
+                        <span key={kw.word} style={{ fontSize: size, color: 'var(--tng-ink-2)', opacity, fontWeight: freq > 1 ? 600 : 400, letterSpacing: '-0.01em' }}>
+                          {kw.word}
+                        </span>
+                      )
+                    })}
+                  </div>
+                </Section>
+              )}
+            </Band>
+          )}
+
+          {/* ── BAND 4 · COMO A IA TE VÊ ─── paper ─────────── */}
+          {candidate.ai_fluency_statements && candidate.ai_fluency_statements.length > 0 && (
+            <Band bg="var(--tng-paper)">
+              <Section label="Como a IA te vê" labelColor="var(--tng-purple-700)" labelBg="var(--tng-purple-100)">
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {candidate.ai_fluency_statements.map((s, i) => (
+                    <div key={i} style={{
+                      display: 'flex', gap: 18, padding: '20px 0',
+                      borderBottom: i < candidate.ai_fluency_statements!.length - 1 ? '1px solid var(--tng-rule)' : 'none',
+                    }}>
+                      <div style={{ color: 'var(--tng-purple-300)', fontSize: 16, flexShrink: 0, marginTop: 5, lineHeight: 1 }}>✦</div>
+                      <div style={{ fontSize: 24, fontFamily: 'var(--tng-font-serif)', fontStyle: 'italic', color: 'var(--tng-ink-2)', lineHeight: 1.55 }}>{s}</div>
+                    </div>
+                  ))}
+                </div>
+              </Section>
+            </Band>
+          )}
+
+          {/* ── BAND 5 · LINKEDIN ─── cream ─────────────────── */}
+          {(candidate.linkedin_headline || candidate.linkedin_about) && (
+            <Band>
+              <Section label="LinkedIn" labelColor="#0A66C2" labelBg="rgba(10,102,194,0.09)">
+                {candidate.linkedin_headline && (
+                  <div style={{
+                    fontSize: 21, fontWeight: 700, color: 'var(--tng-ink)',
+                    borderLeft: '3px solid #0A66C2', paddingLeft: 22, lineHeight: 1.4,
+                    marginBottom: candidate.linkedin_about ? 28 : 0,
+                  }}>
+                    {candidate.linkedin_headline}
                   </div>
                 )}
                 {candidate.linkedin_about && (
-                  <>
-                    <FieldLabel>About</FieldLabel>
-                    <div style={{
-                      fontSize: 12, color: 'var(--text2)', lineHeight: 1.8, marginTop: 5,
-                      whiteSpace: 'pre-wrap',
-                    }}>
-                      {candidate.linkedin_about}
+                  <div style={{ fontSize: 15, color: 'var(--tng-ink-2)', lineHeight: 1.85, whiteSpace: 'pre-wrap' }}>
+                    {candidate.linkedin_about}
+                  </div>
+                )}
+              </Section>
+            </Band>
+          )}
+
+          {/* ── BAND 6 · PROGRESSO ─── bone ─────────────────── */}
+          {(strengths.length > 0 || gaps.length > 0) && (
+            <Band bg="var(--tng-bone)">
+              {strengths.length > 0 && (
+                <Section label="O que você construiu" labelColor="#5E7A0F" labelBg="rgba(94,122,15,0.10)">
+                  {/* Progress bar */}
+                  <div style={{ marginBottom: 28 }}>
+                    <div style={{ marginBottom: 10 }}>
+                      <span style={{ fontSize: 19, color: 'var(--tng-ink-3)', fontStyle: 'italic', fontFamily: 'var(--tng-font-serif)' }}>
+                        {progressSentiment}
+                      </span>
                     </div>
-                  </>
-                )}
-              </Card>
-            )}
-
-            {/* ── AI FLUENCY + KEYWORDS side by side ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-
-              <Card title="AI Fluency">
-                {candidate.ai_fluency_statements?.length ? (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
-                    {candidate.ai_fluency_statements.map((s, i) => (
+                    <div style={{ height: 5, borderRadius: 999, background: 'rgba(94,122,15,0.15)', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', borderRadius: 999, background: '#5E7A0F', width: `${corePct}%` }} />
+                    </div>
+                  </div>
+                  {/* Chips */}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {strengths.map((s, i) => (
                       <div key={i} style={{
-                        display: 'flex', gap: 9, padding: '8px 11px',
-                        background: 'var(--bg3)', borderRadius: 6,
-                        border: '0.5px solid rgba(168,85,247,.2)',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '9px 16px 9px 12px',
+                        background: 'rgba(94, 122, 15, 0.08)',
+                        border: '1px solid rgba(94, 122, 15, 0.22)',
+                        borderRadius: 999,
                       }}>
-                        <span style={{ color: 'var(--purple)', fontSize: 11, flexShrink: 0, marginTop: 1 }}>✦</span>
-                        <span style={{ fontSize: 11, color: 'var(--text2)', lineHeight: 1.6 }}>{s}</span>
+                        <span style={{ color: '#5E7A0F', fontSize: 13, fontWeight: 700 }}>✓</span>
+                        <span style={{ fontSize: 15, color: 'var(--tng-ink-2)', fontWeight: 500 }}>{s}</span>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <Empty text="Construir no Dia 8" />
-                )}
-              </Card>
+                </Section>
+              )}
 
-              <Card title={`Keywords (${keywords?.length ?? 0})`}>
-                {topKeywords.length ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                    {topKeywords.map(kw => (
-                      <div key={kw.word} style={{
-                        display: 'flex', alignItems: 'center', gap: 4,
-                        padding: '3px 9px', borderRadius: 20,
-                        background: 'var(--bg3)', border: '0.5px solid var(--border2)',
+              {gaps.length > 0 && (
+                <Section label="Próximos passos" labelColor="var(--tng-coral-text)" labelBg="rgba(255,107,53,0.09)" style={{ marginTop: strengths.length > 0 ? 48 : 0 }}>
+                  {/* Sentiment header */}
+                  <div style={{
+                    fontSize: 19, color: 'var(--tng-ink-3)', fontStyle: 'italic',
+                    fontFamily: 'var(--tng-font-serif)', lineHeight: 1.6,
+                    marginBottom: 24,
+                  }}>
+                    {gaps.length === 1
+                      ? 'Falta só uma peça — você está quase completo.'
+                      : gaps.length <= 3
+                      ? `${gaps.length} passos para fechar o ciclo. Cada um abre a porta do próximo.`
+                      : 'Cada passo aqui amplifica tudo que você já construiu.'}
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {gaps.map((g, i) => (
+                      <div key={i} style={{
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                        padding: '16px 0',
+                        borderBottom: i < gaps.length - 1 ? '1px solid var(--tng-rule)' : 'none',
+                        gap: 16,
                       }}>
-                        <span style={{ fontSize: 11, color: 'var(--text2)' }}>{kw.word}</span>
-                        {(kw.frequency ?? 1) > 1 && (
-                          <span style={{
-                            fontSize: 9, color: 'var(--accent)', fontWeight: 700,
-                            background: 'var(--accent-dim)', padding: '0 4px',
-                            borderRadius: 8, lineHeight: '14px',
-                          }}>
-                            {kw.frequency}
-                          </span>
-                        )}
+                        <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                          <span style={{ color: 'var(--tng-coral)', fontSize: 15, marginTop: 3, flexShrink: 0, fontWeight: 700 }}>→</span>
+                          <div>
+                            <div style={{ fontSize: 17, color: 'var(--tng-ink-2)', fontWeight: 600, lineHeight: 1.4 }}>{g.text}</div>
+                            <div style={{ fontSize: 13, color: 'var(--tng-ink-3)', marginTop: 4, lineHeight: 1.5, fontStyle: 'italic' }}>
+                              {GAP_WHY[g.text]}
+                            </div>
+                          </div>
+                        </div>
+                        <span style={{ fontSize: 12, color: 'var(--tng-ink-3)', fontFamily: 'var(--tng-font-mono)', fontWeight: 600, letterSpacing: '0.06em', flexShrink: 0, paddingTop: 3 }}>{g.day}</span>
                       </div>
                     ))}
                   </div>
-                ) : (
-                  <Empty text="Coletar no Dia 4–5" />
-                )}
-              </Card>
+                </Section>
+              )}
+            </Band>
+          )}
+
+          {/* ── BAND 7 · ATALHOS ─── paper ──────────────────── */}
+          <Band bg="var(--tng-paper)">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16 }}>
+
+              {/* CV */}
+              <a href="/cv" style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '16px 20px', borderRadius: 12, textDecoration: 'none',
+                background: 'var(--tng-cream)', border: '1px solid var(--tng-rule)',
+                borderLeft: '3px solid var(--tng-coral)',
+                transition: 'box-shadow .15s, border-color .15s',
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: '#FFE4D9', border: '1px solid var(--tng-coral)',
+                  color: 'var(--tng-coral)',
+                }}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="17" height="17">
+                    <rect x="3" y="2" width="10" height="12" rx="1"/><path d="M5 5h6M5 8h6M5 11h4"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontFamily: 'var(--tng-font-mono)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tng-coral-text)', marginBottom: 3 }}>Currículo</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tng-ink)', letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 2 }}>Editar CV</div>
+                  <div style={{ fontSize: 12, color: 'var(--tng-ink-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {activeCV ? [cvName, cvPosition].filter(Boolean).join(' · ') || 'Versão ativa' : 'Criar primeira versão'}
+                  </div>
+                </div>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14, color: 'var(--tng-ink-3)', flexShrink: 0 }}>
+                  <polyline points="6,3 10,8 6,13" />
+                </svg>
+              </a>
+
+              {/* Board */}
+              <a href="/board" style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '16px 20px', borderRadius: 12, textDecoration: 'none',
+                background: 'var(--tng-cream)', border: '1px solid var(--tng-rule)',
+                borderLeft: '3px solid var(--tng-purple-500)',
+                transition: 'box-shadow .15s, border-color .15s',
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--tng-purple-100)', border: '1px solid var(--tng-purple-300)',
+                  color: 'var(--tng-purple-700)',
+                }}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="17" height="17">
+                    <rect x="2" y="5" width="12" height="9" rx="1"/><path d="M6 5V3a1 1 0 011-1h2a1 1 0 011 1v2"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontFamily: 'var(--tng-font-mono)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--tng-purple-700)', marginBottom: 3 }}>Candidaturas</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tng-ink)', letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 2 }}>Job Board</div>
+                  <div style={{ fontSize: 12, color: 'var(--tng-ink-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {totalJobs > 0 ? `${totalJobs} vaga${totalJobs !== 1 ? 's' : ''} salva${totalJobs !== 1 ? 's' : ''}${appliedJobs > 0 ? ` · ${appliedJobs} em andamento` : ''}` : 'Nenhuma vaga adicionada ainda'}
+                  </div>
+                </div>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14, color: 'var(--tng-ink-3)', flexShrink: 0 }}>
+                  <polyline points="6,3 10,8 6,13" />
+                </svg>
+              </a>
+
+              {/* Mentor IA */}
+              <a href="/chat" style={{
+                display: 'flex', alignItems: 'center', gap: 14,
+                padding: '16px 20px', borderRadius: 12, textDecoration: 'none',
+                background: 'var(--tng-cream)', border: '1px solid var(--tng-rule)',
+                borderLeft: '3px solid #B4DD3A',
+                transition: 'box-shadow .15s, border-color .15s',
+              }}>
+                <div style={{
+                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: '#F2FAD5', border: '1px solid #B4DD3A',
+                  color: '#5E7A0F',
+                }}>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" width="17" height="17">
+                    <path d="M2 4a2 2 0 012-2h8a2 2 0 012 2v6a2 2 0 01-2 2H6l-3 3v-3H4a2 2 0 01-2-2z"/>
+                    <circle cx="6" cy="7" r="0.6" fill="currentColor" stroke="none"/>
+                    <circle cx="10" cy="7" r="0.6" fill="currentColor" stroke="none"/>
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontFamily: 'var(--tng-font-mono)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#5E7A0F', marginBottom: 3 }}>Mentor IA</div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--tng-ink)', letterSpacing: '-0.01em', lineHeight: 1.2, marginBottom: 2 }}>Falar com mentor</div>
+                  <div style={{ fontSize: 12, color: 'var(--tng-ink-3)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    Tire dúvidas, analise vagas, refine seu pitch
+                  </div>
+                </div>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14, color: 'var(--tng-ink-3)', flexShrink: 0 }}>
+                  <polyline points="6,3 10,8 6,13" />
+                </svg>
+              </a>
+
             </div>
+          </Band>
 
-            {/* ── SALARY ── */}
-            {(candidate.salary_min || candidate.salary_max) && (
-              <Card title="Faixa Salarial">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          {/* ── BAND 8 · SALÁRIO ─── night (dark) ───────────── */}
+          {(candidate.salary_min || candidate.salary_max) && (
+            <Band bg="var(--tng-night-2)">
+              <Section label="Âncora Salarial" labelColor="rgba(242,238,220,0.50)" labelBg="rgba(242,238,220,0.10)">
+                <div style={{ display: 'flex', gap: 64, flexWrap: 'wrap', alignItems: 'flex-end' }}>
                   {candidate.salary_min && (
-                    <div style={{
-                      padding: '14px 16px', background: 'var(--bg3)',
-                      borderRadius: 6, border: '0.5px solid var(--border2)',
-                    }}>
-                      <div style={{ fontSize: 10, color: 'var(--text4)', marginBottom: 5 }}>MÍNIMO</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: '#4ade80' }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: 'var(--tng-night-ink2)', marginBottom: 8, fontFamily: 'var(--tng-font-mono)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Mínimo</div>
+                      <div style={{ fontSize: 48, fontWeight: 700, color: 'var(--tng-lime)', fontFamily: 'var(--tng-font-display)', letterSpacing: '-0.03em', lineHeight: 1 }}>
                         {fmt(candidate.salary_min, candidate.salary_currency)}
                       </div>
                     </div>
                   )}
                   {candidate.salary_max && (
-                    <div style={{
-                      padding: '14px 16px', background: 'var(--bg3)',
-                      borderRadius: 6, border: '0.5px solid var(--border2)',
-                    }}>
-                      <div style={{ fontSize: 10, color: 'var(--text4)', marginBottom: 5 }}>TARGET</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)' }}>
+                    <div>
+                      <div style={{ fontSize: 11, color: 'var(--tng-night-ink2)', marginBottom: 8, fontFamily: 'var(--tng-font-mono)', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Target</div>
+                      <div style={{ fontSize: 48, fontWeight: 700, color: 'var(--tng-coral)', fontFamily: 'var(--tng-font-display)', letterSpacing: '-0.03em', lineHeight: 1 }}>
                         {fmt(candidate.salary_max, candidate.salary_currency)}
                       </div>
                     </div>
                   )}
                 </div>
-              </Card>
-            )}
+              </Section>
+            </Band>
+          )}
 
-          </div>
-        )}
+        </>)}
+
       </div>
     </div>
   )
 }
 
-// ── Primitives ──────────────────────────────────────────────────────────────
+// ── Gap impact descriptions ──────────────────────────────────────────────────
 
-function Card({ title, children }: { title: string; children: React.ReactNode }) {
+const GAP_WHY: Record<string, string> = {
+  'Elaborar proposta de valor':      'Sua âncora de posicionamento — o que torna você único para um recrutador.',
+  'Criar headline do LinkedIn':      'Primeira impressão em todo resultado de busca e visita ao perfil.',
+  'Escrever About do LinkedIn':      'Onde recrutadores decidem se leem mais ou clicam em outro candidato.',
+  'Mapear habilidades e stack':      'O vocabulário da sua candidatura técnica — sem isso, você não passa pelos filtros.',
+  'Definir mercado-alvo e regiões':  'Foco transforma esforço genérico em resultados concretos.',
+  'Construir banco de keywords':     'Aumenta visibilidade nos sistemas ATS e chama atenção nos títulos certos.',
+  'Definir âncora salarial':         'Quem não sabe o que quer aceita qualquer coisa. A negociação começa aqui.',
+}
+
+// ── Layout primitives ────────────────────────────────────────────────────────
+
+/**
+ * Parses simple inline markers in the value proposition text:
+ *   **word**  → coral, heavy weight, upright (stands out from italic base)
+ *   *word*    → lime highlight background (marca-texto)
+ *
+ * The AI should use these when saving value_proposition / alternatives.
+ */
+function renderRichText(text: string) {
+  const pattern = /(\*\*[^*]+\*\*|\*[^*]+\*)/g
+  const parts: React.ReactNode[] = []
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = pattern.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index))
+    }
+    const raw = match[0]
+    if (raw.startsWith('**')) {
+      parts.push(
+        <strong key={match.index} style={{
+          color: 'var(--tng-coral)', fontWeight: 800, fontStyle: 'normal',
+        }}>
+          {raw.slice(2, -2)}
+        </strong>
+      )
+    } else {
+      parts.push(
+        <mark key={match.index} style={{
+          background: 'rgba(201, 242, 61, 0.38)',
+          color: 'inherit', borderRadius: 3,
+          padding: '1px 4px', fontStyle: 'italic',
+        }}>
+          {raw.slice(1, -1)}
+        </mark>
+      )
+    }
+    lastIndex = match.index + raw.length
+  }
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
+  return <>{parts}</>
+}
+
+function Band({ first, bg, children }: { first?: boolean; bg?: string; children: React.ReactNode }) {
   return (
-    <div style={{
-      background: 'var(--bg2)', border: '0.5px solid var(--border)',
-      borderRadius: 'var(--r)', overflow: 'hidden',
+    <div className="dossier-band" style={{
+      paddingTop:    first ? 56 : 64,
+      paddingBottom: 64,
+      ...(bg ? { background: bg } : {}),
     }}>
-      <div style={{
-        padding: '9px 14px', borderBottom: '0.5px solid var(--border)',
-        fontSize: 10, fontWeight: 600, letterSpacing: '.1em',
-        textTransform: 'uppercase', color: 'var(--text3)',
-      }}>
-        {title}
+      <div style={{ maxWidth: 860, width: '100%' }}>
+        {children}
       </div>
-      <div style={{ padding: '14px 16px' }}>{children}</div>
     </div>
   )
 }
 
-function StatCard({ value, total, label, color, showBar }: {
-  value: number; total?: number; label: string; color: string; showBar?: boolean
+function Section({
+  label, labelColor, labelBg, children, style,
+}: {
+  label?: string
+  labelColor?: string
+  labelBg?: string
+  children: React.ReactNode
+  style?: React.CSSProperties
 }) {
-  const pct = total ? Math.min((value / total) * 100, 100) : 0
   return (
-    <div style={{
-      background: 'var(--bg2)', border: '0.5px solid var(--border)',
-      borderRadius: 'var(--rsm)', padding: '14px 16px',
-      display: 'flex', flexDirection: 'column', gap: 6,
-    }}>
-      <div style={{ fontSize: 26, fontWeight: 700, color, lineHeight: 1 }}>{value}</div>
-      {total && (
-        <div style={{ fontSize: 10, color: 'var(--text4)' }}>de {total}</div>
-      )}
-      {showBar && (
-        <div style={{ height: 3, background: 'var(--bg3)', borderRadius: 2, overflow: 'hidden' }}>
-          <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
+    <div style={style}>
+      {label && (
+        <div style={{ marginBottom: 22 }}>
+          <span style={{
+            display: 'inline-flex', alignItems: 'center',
+            padding: '4px 12px', borderRadius: 999,
+            background: labelBg ?? 'rgba(0,0,0,0.05)',
+            border: `1px solid ${labelColor ?? 'var(--tng-rule)'}`,
+            fontSize: 10, fontWeight: 700, letterSpacing: '0.13em',
+            textTransform: 'uppercase', color: labelColor ?? 'var(--tng-ink-3)',
+            fontFamily: 'var(--tng-font-mono)',
+          }}>
+            {label}
+          </span>
         </div>
       )}
-      <div style={{ fontSize: 11, color: 'var(--text3)' }}>{label}</div>
-    </div>
-  )
-}
-
-function Pill({ text, color, bg, border }: { text: string; color: string; bg: string; border?: string }) {
-  return (
-    <span style={{
-      fontSize: 12, color, background: bg, padding: '3px 10px',
-      borderRadius: 20, border: `0.5px solid ${border ?? color + '33'}`,
-    }}>
-      {text}
-    </span>
-  )
-}
-
-function TagRow({ tags, color }: { tags: string[]; color: string }) {
-  return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-      {tags.map(t => (
-        <span key={t} style={{
-          fontSize: 11, color, background: color + '18',
-          padding: '3px 9px', borderRadius: 20,
-          border: `0.5px solid ${color}33`,
-        }}>
-          {t}
-        </span>
-      ))}
-    </div>
-  )
-}
-
-function FieldBlock({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <FieldLabel>{label}</FieldLabel>
       {children}
     </div>
-  )
-}
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{ fontSize: 10, color: 'var(--text4)', marginBottom: 6, letterSpacing: '.06em', textTransform: 'uppercase' }}>
-      {children}
-    </div>
-  )
-}
-
-function Empty({ text }: { text: string }) {
-  return (
-    <div style={{ fontSize: 12, color: 'var(--text4)', fontStyle: 'italic' }}>{text}</div>
   )
 }
 

@@ -248,6 +248,20 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
 
   // ── NOTES / PLANS ──
   {
+    name: 'get_action_notes',
+    description: `Fetches the candidate's saved action plans and notes. Call at the start of conversations to know what plans already exist, which steps are done, and what's still pending. This gives you context to follow up, celebrate progress, and avoid duplicating plans.`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'number',
+          description: 'Max number of notes to return, most recent first. Default: 10.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
     name: 'save_action_note',
     description: `Saves a structured note, plan, or action items from the current conversation.
 
@@ -279,6 +293,21 @@ Use checklist for any type='plan' or type='action_items' — each step becomes a
         },
       },
       required: ['title', 'content', 'type'],
+    },
+  },
+
+  {
+    name: 'set_chat_title',
+    description: `Set a short, descriptive title for the current chat session.
+Call this once, early in the conversation (after the first user message makes the topic clear).
+Use 4–7 words. Be specific — mention the company, topic, or day if relevant.
+Examples: "Prep entrevista Google PM", "Headline LinkedIn para SRE", "Estratégia networking Berlim", "Reflexão Dia 12".`,
+    input_schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: '4–7 word title summarising this conversation' },
+      },
+      required: ['title'],
     },
   },
 ]

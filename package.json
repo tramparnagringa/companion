@@ -8,7 +8,6 @@
     "start": "next start",
     "migrate": "npx supabase db push",
     "type-check": "npx next typegen && tsc --noEmit"
-
   },
   "dependencies": {
     "@abacatepay/sdk": "^1.2.0",
@@ -19,6 +18,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@supabase/ssr": "^0.10.0",
     "@supabase/supabase-js": "^2.101.1",
+    "@uiw/react-md-editor": "^4.1.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.7.0",

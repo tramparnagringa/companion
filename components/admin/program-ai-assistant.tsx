@@ -101,6 +101,19 @@ export function ProgramAIAssistant({ programId, initialPhase = 'outline', onDays
             }
             if (event.type === 'days_saved') {
               onDaysSaved()
+              const savedCount = event.count ?? '?'
+              const savedPhase = event.phase ?? ''
+              setMessages(m => [...m, {
+                role: 'assistant',
+                content: `✓ ${savedCount} ${savedCount === 1 ? 'dia salvo' : 'dias salvos'} no banco${savedPhase ? ` (${savedPhase})` : ''}. Meu contexto desta conversa não é atualizado automaticamente — para ver os valores atuais, consulte o editor ao lado.`,
+              }])
+            }
+            if (event.type === 'save_error') {
+              // Show save error inline as a system message
+              setMessages(m => [...m, {
+                role: 'assistant',
+                content: `⚠️ Erro ao salvar dia ${event.day}: ${event.error}`,
+              }])
             }
             if (event.type === 'phase') {
               setPhase(event.phase as Phase)

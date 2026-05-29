@@ -24,61 +24,63 @@ export function ContextRail({ role, user }: ContextRailProps) {
   const isApp   = !pathname.startsWith('/admin')
   const isAdmin = pathname.startsWith('/admin')
 
-  // Active area color
-  const backstageColor = 'purple';
-  const areaColor = isAdmin ? backstageColor : 'accent'
+  // Active area color token names for the current context
+  const areaColor = isAdmin ? 'purple' : 'app'
 
-  const btn = (active: boolean, onClick: () => void, title: string, color: string, icon: React.ReactNode) => (
-    <button
-      onClick={onClick}
-      title={title}
-      style={{
-        width: 36, height: 36, borderRadius: 10,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        cursor: 'pointer', border: 'none', transition: 'all .12s',
-        background: active ? `var(--${color}-dim, var(--bg3))` : 'none',
-        color: active ? `var(--${color})` : 'var(--text4)',
-      }}
-      onMouseEnter={e => {
-        if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--bg3)'
-      }}
-      onMouseLeave={e => {
-        if (!active) (e.currentTarget as HTMLElement).style.background = 'none'
-      }}
-    >
-      {icon}
-    </button>
-  )
-
-  // Color vars for the current area
+  // Color sets for each area
   const COLOR_MAP: Record<string, { color: string; bg: string; border: string }> = {
-    accent:  { color: 'var(--accent)',  bg: 'rgba(228,253,139,.2)', border: 'rgba(228,253,139,.35)' },
-    purple:  { color: 'var(--purple)',  bg: 'rgba(167,139,250,.2)', border: 'rgba(167,139,250,.35)' },
-    orange:  { color: 'var(--orange)',  bg: 'rgba(251,146,60,.2)',  border: 'rgba(251,146,60,.35)'  },
+    app:    { color: 'var(--tng-purple-700)', bg: 'var(--tng-purple-100)', border: 'var(--tng-purple-300)' },
+    purple: { color: 'var(--tng-purple-500)', bg: 'var(--tng-purple-100)', border: 'var(--tng-purple-300)' },
+    coral:  { color: 'var(--tng-coral)',      bg: '#FFE4D9',               border: 'rgba(255,107,53,.4)'   },
   }
-  const colors  = COLOR_MAP[areaColor]
+  const colors   = COLOR_MAP[areaColor]
   const initials = user ? (user.user_metadata?.full_name ?? user.email ?? '?').slice(0, 2).toUpperCase() : '?'
+
+  const btn = (active: boolean, onClick: () => void, title: string, colorKey: string, icon: React.ReactNode) => {
+    const c = COLOR_MAP[colorKey] ?? COLOR_MAP.app
+    return (
+      <button
+        onClick={onClick}
+        title={title}
+        style={{
+          width: 36, height: 36, borderRadius: 10,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          cursor: 'pointer', border: 'none', transition: 'all 120ms',
+          background: active ? c.bg : 'none',
+          color: active ? c.color : 'var(--tng-mute)',
+        }}
+        onMouseEnter={e => {
+          if (!active) (e.currentTarget as HTMLElement).style.background = 'var(--tng-bone)'
+        }}
+        onMouseLeave={e => {
+          if (!active) (e.currentTarget as HTMLElement).style.background = 'none'
+        }}
+      >
+        {icon}
+      </button>
+    )
+  }
 
   return (
     <div className="context-rail" style={{
       width: 52, flexShrink: 0,
-      background: 'var(--bg)',
-      borderRight: '0.5px solid var(--border)',
+      background: 'var(--tng-paper)',
+      borderRight: '1px solid var(--tng-rule)',
       display: 'flex', flexDirection: 'column',
       alignItems: 'center',
-      paddingTop: 12, gap: 4,
+      paddingTop: 14, gap: 4,
     }}>
-      {/* Logo dot — reflects active area */}
+      {/* Active area indicator dot */}
       <div style={{
-        width: 8, height: 8, borderRadius: '50%',
+        width: 7, height: 7, borderRadius: '50%',
         background: colors.color,
-        marginBottom: 12, marginTop: 8,
+        marginBottom: 10, marginTop: 4,
         transition: 'background .2s',
       }} />
 
-      {/* App — always visible */}
-      {btn(isApp, () => router.push('/today'), 'App', 'accent',
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 16, height: 16 }}>
+      {/* App */}
+      {btn(isApp, () => router.push('/today'), 'App', 'app',
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" style={{ width: 16, height: 16 }}>
           <rect x="2" y="2" width="5" height="5" rx="1" />
           <rect x="9" y="2" width="5" height="5" rx="1" />
           <rect x="2" y="9" width="5" height="5" rx="1" />
@@ -86,9 +88,9 @@ export function ContextRail({ role, user }: ContextRailProps) {
         </svg>
       )}
 
-      {/* Admin/Mentor backstage — for mentor + admin */}
-      {isMentorOrAdmin && btn(isAdmin, () => router.push(role === 'mentor' ? '/admin/students' : '/admin'), 'Admin', backstageColor,
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 16, height: 16 }}>
+      {/* Admin/Mentor backstage */}
+      {isMentorOrAdmin && btn(isAdmin, () => router.push(role === 'mentor' ? '/admin/students' : '/admin'), 'Admin', 'purple',
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" style={{ width: 16, height: 16 }}>
           <circle cx="8" cy="8" r="2.5" />
           <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.2 3.2l1.4 1.4M11.4 11.4l1.4 1.4M3.2 12.8l1.4-1.4M11.4 4.6l1.4-1.4" />
         </svg>
@@ -96,13 +98,15 @@ export function ContextRail({ role, user }: ContextRailProps) {
 
       {/* Bottom: avatar + logout */}
       <div style={{ marginTop: 'auto', paddingBottom: 12, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-        {/* Avatar — color reflects active area */}
+        {/* Avatar */}
         <div style={{
           width: 30, height: 30, borderRadius: '50%',
-          background: colors.bg, border: `1px solid ${colors.border}`,
+          background: colors.bg,
+          border: `1px solid ${colors.border}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 10, fontWeight: 600, color: colors.color,
+          fontSize: 10, fontWeight: 700, color: colors.color,
           transition: 'background .2s, border-color .2s, color .2s',
+          fontFamily: 'var(--mono)',
         }}>
           {initials}
         </div>
@@ -115,15 +119,15 @@ export function ContextRail({ role, user }: ContextRailProps) {
             width: 36, height: 36, borderRadius: 10,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'pointer', border: 'none', background: 'none',
-            color: 'var(--text4)', transition: 'all .12s',
+            color: 'var(--tng-mute)', transition: 'all 120ms',
           }}
           onMouseEnter={e => {
-            (e.currentTarget as HTMLElement).style.background = 'var(--bg3)'
-            ;(e.currentTarget as HTMLElement).style.color = 'var(--red, #f87171)'
+            (e.currentTarget as HTMLElement).style.background = 'var(--tng-bone)'
+            ;(e.currentTarget as HTMLElement).style.color = 'var(--tng-danger)'
           }}
           onMouseLeave={e => {
             (e.currentTarget as HTMLElement).style.background = 'none'
-            ;(e.currentTarget as HTMLElement).style.color = 'var(--text4)'
+            ;(e.currentTarget as HTMLElement).style.color = 'var(--tng-mute)'
           }}
         >
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 15, height: 15 }}>

@@ -33,3 +33,26 @@ export async function GET(
     notes:   notesRes.data ?? [],
   })
 }
+
+// PATCH /api/chat/sessions/:id — update title
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return new Response('Unauthorized', { status: 401 })
+
+  const { id } = await params
+  const { title } = await req.json()
+  if (!title) return Response.json({ error: 'title required' }, { status: 400 })
+
+  const { error } = await (supabase as any)
+    .from('chat_sessions')
+    .update({ title, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('user_id', user.id)
+
+  if (error) return Response.json({ error: error.message }, { status: 500 })
+  return Response.json({ ok: true })
+}

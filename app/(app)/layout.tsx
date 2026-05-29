@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   if (!user) redirect('/login')
 
-  const [{ data: profile }, { data: balances }, enrollments, { count: plansCount }] = await Promise.all([
+  const [{ data: profile }, { data: balances }, enrollments] = await Promise.all([
     supabase.from('profiles').select('role').eq('id', user.id).single(),
     supabase
       .from('token_balance')
@@ -18,10 +18,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       .eq('is_active', true)
       .gt('expires_at', new Date().toISOString()),
     getAllEnrollments(user.id, supabase),
-    (supabase as any)
-      .from('action_notes')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id),
   ])
 
   const activeEnrollments = enrollments
@@ -30,10 +26,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const tokenUsed   = balances?.reduce((s, b) => s + b.tokens_used,  0) ?? 0
   const plan        = balances?.[0]?.product_type ?? 'student'
 
-  // credit_ratio comes from the first active enrollment's program (display only)
-  const creditRatio  = (enrollments[0]?.program as { credit_ratio?: number | null } | undefined)?.credit_ratio ?? 10
-  const creditTotal  = Math.floor(tokenTotal / creditRatio)
-  const creditUsed   = Math.floor(tokenUsed  / creditRatio)
+  // 1 crédito = 1.000 tokens. Fixed display ratio — no credit_ratio dependency.
+  const CREDIT_RATIO = 1_000
+  const creditTotal  = Math.floor(tokenTotal / CREDIT_RATIO)
+  const creditUsed   = Math.floor(tokenUsed  / CREDIT_RATIO)
 
   return (
     <AppShell
@@ -45,7 +41,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         name: e.program.name,
         totalDays: e.program.total_days,
       }))}
-      hasPlans={(plansCount ?? 0) > 0}
       tokenUsed={creditUsed}
       tokenTotal={creditTotal}
       plan={plan}

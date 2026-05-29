@@ -105,7 +105,7 @@ export function PricingCards({
               {program.token_allocation && (
                 <div style={{ fontSize: 12, color: 'var(--text3)', display: 'flex', gap: 6, alignItems: 'center' }}>
                   <span style={{ color: 'var(--green)', fontSize: 10 }}>●</span>
-                  {(program.token_allocation / 1_000_000).toFixed(0)}M créditos de IA
+                  {Math.floor(program.token_allocation / 1_000).toLocaleString('pt-BR')} créditos de IA
                 </div>
               )}
               {program.validity_days && (

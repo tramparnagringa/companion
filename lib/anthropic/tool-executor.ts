@@ -371,6 +371,21 @@ export async function executeToolCall(
       }
     }
 
+    case 'get_action_notes': {
+      const limit = (input.limit as number | undefined) ?? 10
+      const { data, error } = await supabase
+        .from('action_notes' as any)
+        .select('id, title, content, type, day_number, checklist, completed, created_at')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+      if (error) {
+        console.error('[tool:get_action_notes]', error)
+        return { error: error.message }
+      }
+      return { notes: data ?? [] }
+    }
+
     case 'save_action_note': {
       const rawChecklist = (input.checklist as Array<{ label: string }> | undefined) ?? []
       const checklist = rawChecklist.map(item => ({
@@ -398,6 +413,17 @@ export async function executeToolCall(
         return { error: error.message }
       }
       return data
+    }
+
+    case 'set_chat_title': {
+      if (!sessionId) return { ok: false, reason: 'no session' }
+      const title = (input.title as string).slice(0, 100)
+      const { error } = await (supabase as any)
+        .from('chat_sessions')
+        .update({ title, updated_at: new Date().toISOString() })
+        .eq('id', sessionId)
+        .eq('user_id', userId)
+      return error ? { ok: false, error: error.message } : { ok: true }
     }
 
     default:

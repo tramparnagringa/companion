@@ -27,35 +27,72 @@ export default function LoginPage() {
 
   return (
     <div style={{
-      position: 'fixed', inset: 0, background: 'var(--bg)',
+      position: 'fixed', inset: 0,
+      background: 'var(--tng-cream)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
     }}>
+      {/* Decorative background rule */}
       <div style={{
-        width: 380, padding: 40, background: 'var(--bg2)',
-        border: '0.5px solid var(--border2)', borderRadius: 'var(--rxl)',
+        position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none',
       }}>
-        {/* Logo */}
         <div style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: '.12em',
-          textTransform: 'uppercase', color: 'var(--accent)',
-          marginBottom: 28, display: 'flex', alignItems: 'center', gap: 7,
-        }}>
-          <span style={{ width: 5, height: 5, background: 'var(--accent)', borderRadius: '50%', display: 'inline-block' }} />
-          TNG Companion
+          position: 'absolute', top: 0, left: 0, right: 0,
+          height: 3, background: 'var(--tng-purple-700)',
+        }} />
+      </div>
+
+      <div style={{
+        width: 400, padding: '36px 40px 40px',
+        background: 'var(--tng-paper)',
+        border: '1px solid var(--tng-rule)',
+        borderRadius: 22,
+        boxShadow: '0 2px 0 rgba(20,20,20,.04), 0 24px 48px -12px rgba(20,20,20,.12)',
+      }}>
+        {/* Brand */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
+          <img src="/logo-mark.svg" alt="TNG" width={28} height={28} />
+          <div>
+            <div style={{
+              fontFamily: 'var(--tng-font-display)',
+              fontWeight: 700, fontSize: 13,
+              textTransform: 'uppercase',
+              letterSpacing: '0.04em',
+              color: 'var(--tng-purple-700)',
+              lineHeight: 1,
+            }}>
+              Trampar na Gringa
+            </div>
+            <div style={{
+              fontFamily: 'var(--mono)', fontSize: 9,
+              textTransform: 'uppercase', letterSpacing: '0.18em',
+              color: 'var(--tng-coral)', marginTop: 3,
+            }}>
+              Companion
+            </div>
+          </div>
         </div>
 
-        <div style={{ fontSize: 22, fontWeight: 500, marginBottom: 6 }}>
+        {/* Heading */}
+        <div style={{
+          fontSize: 26, fontWeight: 700, marginBottom: 8,
+          fontFamily: 'var(--tng-font-display)',
+          color: 'var(--tng-purple-900)',
+          letterSpacing: '-0.02em', lineHeight: 1.1,
+        }}>
           Bem-vindo de volta.
         </div>
-        <div style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 28, lineHeight: 1.65 }}>
-          Acesse com sua conta Google ou LinkedIn. O acesso é liberado manualmente após a confirmação da sua vaga.
+        <div style={{
+          fontSize: 14, color: 'var(--tng-ink-3)', marginBottom: 28, lineHeight: 1.65,
+        }}>
+          Acesse com sua conta Google ou LinkedIn para continuar sua jornada.
         </div>
 
         {error && (
           <div style={{
-            background: 'var(--red-dim)', border: '0.5px solid rgba(248,113,113,.2)',
-            borderRadius: 'var(--rsm)', padding: '10px 12px',
-            fontSize: 12, color: 'var(--red)', marginBottom: 16,
+            background: 'rgba(200, 68, 43, .08)',
+            border: '1px solid rgba(200, 68, 43, .25)',
+            borderRadius: 8, padding: '10px 14px',
+            fontSize: 13, color: 'var(--tng-danger)', marginBottom: 18,
           }}>
             {error}
           </div>
@@ -66,14 +103,14 @@ export default function LoginPage() {
           onClick={() => signIn('google')}
           disabled={loading !== null}
           style={{
-            width: '100%', padding: '11px 14px', fontSize: 14, fontWeight: 500,
-            background: loading === 'google' ? 'var(--bg4)' : 'var(--bg3)',
-            color: loading !== null ? 'var(--text3)' : 'var(--text)',
-            border: '0.5px solid var(--border2)', borderRadius: 'var(--rsm)',
+            width: '100%', padding: '12px 16px', fontSize: 14, fontWeight: 500,
+            background: loading === 'google' ? 'var(--tng-bone)' : 'var(--tng-cream)',
+            color: loading !== null ? 'var(--tng-ink-3)' : 'var(--tng-ink)',
+            border: '1px solid var(--tng-rule)', borderRadius: 10,
             cursor: loading !== null ? 'not-allowed' : 'pointer',
-            fontFamily: 'var(--font)', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', gap: 10, marginBottom: 10,
-            transition: 'all .15s',
+            fontFamily: 'var(--font)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            marginBottom: 10, transition: 'all 150ms',
           }}
         >
           {loading === 'google' ? (
@@ -91,14 +128,14 @@ export default function LoginPage() {
           onClick={() => signIn('linkedin_oidc')}
           disabled={loading !== null}
           style={{
-            width: '100%', padding: '11px 14px', fontSize: 14, fontWeight: 500,
-            background: loading === 'linkedin' ? 'var(--bg4)' : 'var(--bg3)',
-            color: loading !== null ? 'var(--text3)' : 'var(--text)',
-            border: '0.5px solid var(--border2)', borderRadius: 'var(--rsm)',
+            width: '100%', padding: '12px 16px', fontSize: 14, fontWeight: 500,
+            background: loading === 'linkedin' ? 'var(--tng-bone)' : 'var(--tng-cream)',
+            color: loading !== null ? 'var(--tng-ink-3)' : 'var(--tng-ink)',
+            border: '1px solid var(--tng-rule)', borderRadius: 10,
             cursor: loading !== null ? 'not-allowed' : 'pointer',
-            fontFamily: 'var(--font)', display: 'flex', alignItems: 'center',
-            justifyContent: 'center', gap: 10,
-            transition: 'all .15s',
+            fontFamily: 'var(--font)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+            transition: 'all 150ms',
           }}
         >
           {loading === 'linkedin' ? (
@@ -111,11 +148,16 @@ export default function LoginPage() {
           )}
         </button>
 
-        <div style={{ textAlign: 'center', fontSize: 11, color: 'var(--text4)', marginTop: 20, lineHeight: 1.6 }}>
+        <div style={{
+          textAlign: 'center', fontSize: 12, color: 'var(--tng-ink-3)', marginTop: 22, lineHeight: 1.6,
+        }}>
           Ainda não tem acesso?{' '}
           <a
             href="https://tng.dev"
-            style={{ color: 'var(--accent)', textDecoration: 'none' }}
+            style={{
+              color: 'var(--tng-purple-700)', textDecoration: 'underline',
+              textDecorationColor: 'var(--tng-lime)',
+            }}
           >
             Saiba mais sobre o bootcamp
           </a>

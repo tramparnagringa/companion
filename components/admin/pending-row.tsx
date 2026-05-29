@@ -72,10 +72,9 @@ export function PendingRow({
   const selectedProgram = programs.find(p => p.id === programId) ?? null
   const programHasTokens = !!selectedProgram?.token_allocation && !!selectedProgram?.validity_days
 
-  // Displayed credit count for programs with credit_ratio
-  const creditRatio = selectedProgram?.credit_ratio ?? 10
+  // 1 crédito = 1.000 tokens (display only)
   const autoCredits = programHasTokens
-    ? Math.round(selectedProgram!.token_allocation! / creditRatio).toLocaleString('pt-BR')
+    ? Math.floor(selectedProgram!.token_allocation! / 1_000).toLocaleString('pt-BR')
     : null
 
   function handleApprove() {

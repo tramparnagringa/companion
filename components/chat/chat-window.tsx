@@ -9,6 +9,16 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   toolCalls?: string[]
+  timestamp?: string   // ISO string, set at send time
+}
+
+interface JobCtx {
+  company: string
+  role: string
+  fitScore?: number | null
+  analysisNotes?: string | null
+  strongKeywords?: string[] | null
+  weakKeywords?: string[] | null
 }
 
 interface ChatWindowProps {
@@ -18,9 +28,23 @@ interface ChatWindowProps {
   mode?: 'task' | 'mentor'
   loadSessionId?: string | null
   onSessionCreated?: (sessionId: string) => void
+  userName?: string
+  jobContext?: JobCtx | null
 }
 
-export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', loadSessionId, onSessionCreated }: ChatWindowProps) {
+function formatTime(iso?: string): string | null {
+  if (!iso) return null
+  return new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+}
+
+const WELCOME_CHIPS = [
+  'Preparar para entrevista',
+  'Melhorar meu LinkedIn',
+  'Revisar meu CV',
+  'Onde buscar vagas internacionais',
+]
+
+export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', loadSessionId, onSessionCreated, userName, jobContext }: ChatWindowProps) {
   const router = useRouter()
   const [messages, setMessages]   = useState<Message[]>([])
   const [input, setInput]         = useState('')
@@ -29,13 +53,28 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
   const [dayCompleted, setDayCompleted] = useState(false)
   const [planSaved, setPlanSaved] = useState<{ title: string } | null>(null)
 
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  const didAutoSend    = useRef(false)
-  const prevLoadId     = useRef<string | null | undefined>(undefined)
+  const messagesEndRef     = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const userScrolledRef    = useRef(false)
+  const didAutoSend        = useRef(false)
+  const prevLoadId         = useRef<string | null | undefined>(undefined)
 
+  // Welcome mode: shown before first message in free-form mentor chat
+  const isWelcomeMode = messages.length === 0 && mode === 'mentor' && !dayNumber && !jobContext && !loadSessionId
+
+  // Auto-scroll: only when the user hasn't manually scrolled up
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (!userScrolledRef.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    }
   }, [messages, loading])
+
+  function handleScroll() {
+    const el = scrollContainerRef.current
+    if (!el) return
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    userScrolledRef.current = distFromBottom > 80
+  }
 
   // Load existing session when loadSessionId changes
   useEffect(() => {
@@ -79,7 +118,8 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
   async function send(text?: string) {
     const content = text ?? input
     if (!content.trim() || loading) return
-    const userMsg: Message = { role: 'user', content }
+    userScrolledRef.current = false
+    const userMsg: Message = { role: 'user', content, timestamp: new Date().toISOString() }
     const updatedMessages = [...messages, userMsg]
     setMessages(updatedMessages)
     if (!text) setInput('')
@@ -88,11 +128,15 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
     // Create session on first message
     let currentSessionId = sessionId
     if (!currentSessionId) {
+      const sessionTitle = jobContext
+        ? `Prep · ${jobContext.company} — ${jobContext.role}`.slice(0, 80)
+        : content.slice(0, 60)
+
       const res = await fetch('/api/chat/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title:      content.slice(0, 60),
+          title:      sessionTitle,
           mode,
           day_number: dayNumber ?? null,
         }),
@@ -115,6 +159,7 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
           dayNumber,
           slug,
           sessionId: currentSessionId,
+          ...(jobContext ? { jobContext } : {}),
         }),
       })
 
@@ -129,8 +174,11 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
       const reader = res.body?.getReader()
       if (!reader) return
 
-      let assistantContent = ''
-      const toolCalls: string[] = []
+      // Each tool_result that is followed by more text creates a new bubble.
+      // `segments` tracks the separate text blocks; `newSegmentPending` is set
+      // true when a tool fires so the next text delta opens a fresh message.
+      let segments: Array<{ content: string; toolCalls: string[] }> = [{ content: '', toolCalls: [] }]
+      let newSegmentPending = false
       setMessages(prev => [...prev, { role: 'assistant', content: '' }])
 
       while (true) {
@@ -145,16 +193,31 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
           if (data === '[DONE]') break
           try {
             const event = JSON.parse(data)
+
             if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
-              assistantContent += event.delta.text
-              setMessages(prev => {
-                const updated = [...prev]
-                updated[updated.length - 1] = { role: 'assistant', content: assistantContent, toolCalls }
-                return updated
-              })
+              const text = event.delta.text
+              const cur = segments[segments.length - 1]
+              if (newSegmentPending && cur.content !== '') {
+                // Tool fired after real text — start a new bubble
+                segments.push({ content: text, toolCalls: [] })
+                newSegmentPending = false
+                setMessages(prev => [...prev, { role: 'assistant', content: text, toolCalls: [] }])
+              } else {
+                // Either no pending segment, or current segment is still empty
+                // (tools fired before any text) — fill the existing bubble
+                newSegmentPending = false
+                cur.content += text
+                setMessages(prev => {
+                  const updated = [...prev]
+                  updated[updated.length - 1] = { role: 'assistant', content: cur.content, toolCalls: cur.toolCalls }
+                  return updated
+                })
+              }
             }
+
             if (event.type === 'tool_result') {
-              toolCalls.push(event.tool)
+              segments[segments.length - 1].toolCalls.push(event.tool)
+              newSegmentPending = true
               if (event.tool === 'save_day_output') setDayCompleted(true)
               if (event.tool === 'save_action_note') {
                 setPlanSaved({ title: event.title ?? 'Plano de ação' })
@@ -162,10 +225,12 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
               }
               setMessages(prev => {
                 const updated = [...prev]
-                updated[updated.length - 1] = { role: 'assistant', content: assistantContent, toolCalls: [...toolCalls] }
+                const cur = segments[segments.length - 1]
+                updated[updated.length - 1] = { role: 'assistant', content: cur.content, toolCalls: [...cur.toolCalls] }
                 return updated
               })
             }
+
             if (event.type === 'error') {
               setMessages(prev => {
                 const updated = [...prev]
@@ -177,10 +242,14 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
         }
       }
 
-      const finalMessages: Message[] = [
-        ...updatedMessages,
-        { role: 'assistant', content: assistantContent, toolCalls },
-      ]
+      const segmentMessages: Message[] = segments.map((seg, i) => ({
+        role: 'assistant' as const,
+        content: seg.content,
+        toolCalls: seg.toolCalls,
+        timestamp: i === segments.length - 1 ? new Date().toISOString() : undefined,
+      }))
+      const finalMessages: Message[] = [...updatedMessages, ...segmentMessages]
+      setMessages(finalMessages)
       if (currentSessionId) await saveSession(currentSessionId, finalMessages)
     } finally {
       setLoading(false)
@@ -189,205 +258,228 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Context bar */}
-      <div style={{
-        background: 'var(--bg2)', border: '0.5px solid var(--border)',
-        borderRadius: 'var(--rsm)', padding: '8px 12px',
-        display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12,
-      }}>
-        <span style={{
-          width: 6, height: 6, background: 'var(--accent)', borderRadius: '50%',
-          flexShrink: 0, animation: 'pulse 2s infinite',
-        }} />
-        <span style={{ fontSize: 11, color: 'var(--text3)' }}>Contexto carregado</span>
-        {dayNumber && (
-          <span style={{
-            fontSize: 10, background: 'var(--bg3)', color: 'var(--purple)',
-            padding: '2px 7px', borderRadius: 8,
-          }}>
-            Dia {dayNumber}
-          </span>
-        )}
-      </div>
 
-      {/* Messages */}
-      <div style={{
-        flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column',
-        gap: 10, paddingBottom: 12,
-      }}>
-        {messages.length === 0 && (
-          <div style={{ fontSize: 13, color: 'var(--text3)', textAlign: 'center', marginTop: 40 }}>
-            {'Comece colando uma vaga ou fazendo uma pergunta sobre sua busca.'}
+      {isWelcomeMode ? (
+        /* ── Claude-style centered welcome ── */
+        <div className="chat-welcome-center">
+          <div className="chat-welcome-greeting">
+            {userName ? `Oi, ${userName} 👋` : 'Olá 👋'}
           </div>
-        )}
+          <div className="chat-welcome-sub">No que posso te ajudar hoje?</div>
 
-        {messages.map((msg, i) => (
-          <div key={i} style={{ maxWidth: '88%', alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+          <div className="chat-welcome-form">
+            <textarea
+              className="chat-welcome-textarea"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+              placeholder="Escreva uma mensagem..."
+              rows={3}
+              autoFocus
+            />
+            <button
+              className="chat-welcome-send"
+              onClick={() => send()}
+              disabled={!input.trim() || loading}
+            >
+              Enviar →
+            </button>
+          </div>
 
-            {msg.toolCalls && msg.toolCalls.length > 0 && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 6 }}>
-                {msg.toolCalls.map((tool, ti) => (
-                  <div key={ti} style={{
-                    display: 'flex', alignItems: 'center', gap: 7,
-                    padding: '5px 10px', background: 'var(--bg3)',
-                    borderRadius: 'var(--rsm)', borderLeft: '2px solid var(--purple)',
-                    fontSize: 11, color: 'var(--text3)',
-                  }}>
-                    <span style={{ color: 'var(--green)', fontWeight: 500, fontFamily: 'var(--mono)' }}>✓</span>
-                    <span style={{ color: 'var(--purple)', fontWeight: 500, fontFamily: 'var(--mono)' }}>{tool}()</span>
-                  </div>
-                ))}
+          <div className="chat-welcome-chips">
+            {WELCOME_CHIPS.map(chip => (
+              <button
+                key={chip}
+                className="chat-welcome-chip"
+                onClick={() => send(chip)}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Messages */}
+          <div className="chat-messages" ref={scrollContainerRef} onScroll={handleScroll}>
+
+            {/* Context pill */}
+            <div className="chat-context-pill">
+              <span className="chat-context-dot" />
+              Contexto carregado
+              {dayNumber && <span className="chat-context-tag">Dia {dayNumber}</span>}
+            </div>
+
+            {/* Empty state for non-welcome modes */}
+            {messages.length === 0 && (dayNumber || jobContext || mode !== 'mentor') && (
+              <div className="chat-empty">
+                <div className="chat-empty-icon">✦</div>
+                <div className="chat-empty-text">
+                  {dayNumber
+                    ? 'A IA já tem o contexto do seu dia. Comece a conversa.'
+                    : jobContext
+                      ? `Contexto carregado: ${jobContext.company} — ${jobContext.role}. Pronto para preparar.`
+                      : 'Comece colando uma vaga, fazendo uma pergunta ou pedindo uma análise.'}
+                </div>
               </div>
             )}
 
-            <div style={{
-              padding: '10px 14px', borderRadius: 12, fontSize: 13, lineHeight: 1.65,
-              background: msg.role === 'user' ? 'var(--accent)' : 'var(--bg2)',
-              color: msg.role === 'user' ? 'var(--accent-text)' : 'var(--text)',
-              border: msg.role === 'assistant' ? '0.5px solid var(--border)' : 'none',
-              borderBottomLeftRadius:  msg.role === 'assistant' ? 3 : 12,
-              borderBottomRightRadius: msg.role === 'user' ? 3 : 12,
-            }}>
-              {msg.role === 'assistant' ? (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={{
-                    p:      ({ children }) => <p style={{ margin: '0 0 8px', whiteSpace: 'pre-wrap' }}>{children}</p>,
-                    h3:     ({ children }) => <h3 style={{ fontSize: 13, fontWeight: 600, margin: '10px 0 4px' }}>{children}</h3>,
-                    h2:     ({ children }) => <h2 style={{ fontSize: 14, fontWeight: 600, margin: '12px 0 4px' }}>{children}</h2>,
-                    ul:     ({ children }) => <ul style={{ margin: '4px 0 8px', paddingLeft: 18 }}>{children}</ul>,
-                    ol:     ({ children }) => <ol style={{ margin: '4px 0 8px', paddingLeft: 18 }}>{children}</ol>,
-                    li:     ({ children }) => <li style={{ marginBottom: 3 }}>{children}</li>,
-                    strong: ({ children }) => <strong style={{ fontWeight: 600, color: 'var(--accent)' }}>{children}</strong>,
-                    code:   ({ children }) => <code style={{ fontFamily: 'var(--mono)', fontSize: 11, background: 'var(--bg3)', padding: '1px 5px', borderRadius: 4 }}>{children}</code>,
-                    hr:     () => <hr style={{ border: 'none', borderTop: '0.5px solid var(--border2)', margin: '10px 0' }} />,
-                    table:  ({ children }) => <table style={{ borderCollapse: 'collapse', fontSize: 12, marginBottom: 8, width: '100%' }}>{children}</table>,
-                    th:     ({ children }) => <th style={{ padding: '4px 8px', borderBottom: '0.5px solid var(--border2)', textAlign: 'left', fontWeight: 600 }}>{children}</th>,
-                    td:     ({ children }) => <td style={{ padding: '4px 8px', borderBottom: '0.5px solid var(--border3)' }}>{children}</td>,
-                  }}
-                >
-                  {msg.content || (loading && i === messages.length - 1 ? '...' : '')}
-                </ReactMarkdown>
-              ) : (
-                <span style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</span>
-              )}
-            </div>
-          </div>
-        ))}
+            {messages.map((msg, i) => {
+              const prevRole = messages[i - 1]?.role
+              const sameAsPrev = prevRole === msg.role
+              return (
+              <div key={i} className={msg.role === 'user' ? 'chat-msg-user' : 'chat-msg-ai'}>
 
-        {loading && messages[messages.length - 1]?.role !== 'assistant' && (
-          <div style={{ alignSelf: 'flex-start' }}>
-            <div style={{
-              display: 'flex', gap: 4, padding: '10px 14px',
-              background: 'var(--bg2)', border: '0.5px solid var(--border)',
-              borderRadius: 12, borderBottomLeftRadius: 3, width: 'fit-content',
-            }}>
-              {[0, 0.2, 0.4].map((delay, i) => (
-                <span key={i} style={{
-                  width: 5, height: 5, background: 'var(--text3)', borderRadius: '50%',
-                  display: 'inline-block', animation: `bop 1.2s infinite ${delay}s`,
-                }} />
-              ))}
-            </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+                {msg.role === 'assistant' && !sameAsPrev && (
+                  <div className="chat-msg-ai-label">
+                    <span style={{ fontSize: 12 }}>✦</span>
+                    Mentor IA
+                  </div>
+                )}
 
-      {/* Day completion card */}
-      {dayCompleted && dayNumber && slug && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 16px', marginBottom: 10,
-          background: 'var(--green-dim)', border: '0.5px solid rgba(74,222,128,.25)',
-          borderRadius: 'var(--r)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 15 }}>✓</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--green)' }}>Sessão concluída</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>
-                Volte ao dia para marcar as atividades como concluídas
+                {msg.role === 'user' && !sameAsPrev && userName && (
+                  <div className="chat-msg-user-label">{userName}</div>
+                )}
+
+                {/* Tool badges above AI bubble */}
+                {msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0 && (
+                  <div className="chat-tools">
+                    {msg.toolCalls.map((tool, ti) => (
+                      <span key={ti} className="chat-tool-badge">
+                        <span className="chat-tool-badge-check">✓</span>
+                        {tool}()
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {msg.role === 'user' ? (
+                  <>
+                    <div className="chat-bubble-user">{msg.content}</div>
+                    {formatTime(msg.timestamp) && (
+                      <div style={{
+                        fontSize: 10, color: 'var(--tng-mute)',
+                        fontFamily: 'var(--tng-font-mono)',
+                        textAlign: 'right', marginTop: 4,
+                      }}>
+                        {formatTime(msg.timestamp)}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="chat-bubble-ai">
+                      <div className="chat-ai-body">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          p:      ({ children }) => <p>{children}</p>,
+                          h2:     ({ children }) => <h2>{children}</h2>,
+                          h3:     ({ children }) => <h3>{children}</h3>,
+                          ul:     ({ children }) => <ul>{children}</ul>,
+                          ol:     ({ children }) => <ol>{children}</ol>,
+                          li:     ({ children }) => <li>{children}</li>,
+                          strong: ({ children }) => <strong>{children}</strong>,
+                          code:   ({ children }) => <code>{children}</code>,
+                          hr:     () => <hr />,
+                          table:  ({ children }) => <table>{children}</table>,
+                          th:     ({ children }) => <th>{children}</th>,
+                          td:     ({ children }) => <td>{children}</td>,
+                        }}
+                      >
+                        {msg.content || (loading && i === messages.length - 1 ? '…' : '')}
+                      </ReactMarkdown>
+                      </div>
+                    </div>
+                    {formatTime(msg.timestamp) && (
+                      <div style={{
+                        fontSize: 10, color: 'var(--tng-mute)',
+                        fontFamily: 'var(--tng-font-mono)',
+                        marginTop: 4,
+                      }}>
+                        {formatTime(msg.timestamp)}
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            </div>
-          </div>
-          <a
-            href={`/${slug}/days/${dayNumber}`}
-            style={{
-              fontSize: 12, fontWeight: 500, padding: '6px 14px',
-              borderRadius: 'var(--rsm)', textDecoration: 'none',
-              background: 'var(--green-dim)', color: 'var(--green)',
-              border: '0.5px solid rgba(74,222,128,.35)',
-              flexShrink: 0,
-            }}
-          >
-            Ir para o Dia {dayNumber} →
-          </a>
-        </div>
-      )}
+              )
+            })}
 
-      {/* Plan saved card */}
-      {planSaved && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '12px 16px', marginBottom: 10,
-          background: 'rgba(168,85,247,.08)', border: '0.5px solid rgba(168,85,247,.25)',
-          borderRadius: 'var(--r)',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 15 }}>◈</span>
-            <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--purple)' }}>{planSaved.title}</div>
-              <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 1 }}>Plano salvo — acesse na sua lista de planos</div>
-            </div>
-          </div>
-          <a
-            href="/plans"
-            style={{
-              fontSize: 12, fontWeight: 500, padding: '6px 14px',
-              borderRadius: 'var(--rsm)', textDecoration: 'none',
-              background: 'rgba(168,85,247,.12)', color: 'var(--purple)',
-              border: '0.5px solid rgba(168,85,247,.35)',
-              flexShrink: 0,
-            }}
-          >
-            Ver planos →
-          </a>
-        </div>
-      )}
+            {/* Typing indicator */}
+            {loading && messages[messages.length - 1]?.role !== 'assistant' && (
+              <div className="chat-msg-ai">
+                <div className="chat-msg-ai-label">
+                  <span style={{ fontSize: 12 }}>✦</span>
+                  Mentor IA
+                </div>
+                <div className="chat-typing">
+                  {[0, 0.2, 0.4].map((delay, idx) => (
+                    <span key={idx} className="chat-typing-dot" style={{ animationDelay: `${delay}s` }} />
+                  ))}
+                </div>
+              </div>
+            )}
 
-      {/* Input */}
-      <div style={{
-        display: 'flex', gap: 8, alignItems: 'flex-end',
-        paddingTop: 10, borderTop: '0.5px solid var(--border)',
-      }}>
-        <textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          placeholder="Cole uma vaga ou faça uma pergunta..."
-          rows={1}
-          style={{
-            flex: 1, minHeight: 38, maxHeight: 100, padding: '9px 13px',
-            fontSize: 13, lineHeight: 1.5, background: 'var(--bg2)',
-            border: '0.5px solid var(--border2)', borderRadius: 'var(--r)',
-            color: 'var(--text)', fontFamily: 'var(--font)', resize: 'none',
-            outline: 'none',
-          }}
-        />
-        <button
-          onClick={() => send()}
-          disabled={!input.trim() || loading}
-          style={{
-            padding: '9px 14px', borderRadius: 'var(--rsm)', border: 'none',
-            background: 'var(--accent)', color: 'var(--accent-text)',
-            fontSize: 12, fontWeight: 500, cursor: 'pointer', fontFamily: 'var(--font)',
-            opacity: !input.trim() || loading ? 0.5 : 1,
-          }}
-        >
-          Enviar
-        </button>
-      </div>
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Day completion notification */}
+          {dayCompleted && dayNumber && slug && (
+            <div className="chat-notify" style={{ background: '#F2FAD5', border: '1px solid #B4DD3A' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16, color: '#5E7A0F' }}>✓</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#5E7A0F' }}>Sessão concluída</div>
+                  <div style={{ fontSize: 11, color: 'var(--tng-ink-3)', marginTop: 2 }}>
+                    Volte ao dia para marcar as atividades como concluídas
+                  </div>
+                </div>
+              </div>
+              <a href={`/${slug}/days/${dayNumber}`} className="chat-notify-link"
+                style={{ background: '#5E7A0F', color: '#F2FAD5' }}>
+                Ir para o Dia {dayNumber} →
+              </a>
+            </div>
+          )}
+
+          {/* Plan saved notification */}
+          {planSaved && (
+            <div className="chat-notify" style={{ background: 'var(--tng-purple-100)', border: '1px solid var(--tng-purple-300)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 16, color: 'var(--tng-purple-700)' }}>◈</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tng-purple-700)' }}>{planSaved.title}</div>
+                  <div style={{ fontSize: 11, color: 'var(--tng-ink-3)', marginTop: 2 }}>Plano salvo — acesse na sua lista de planos</div>
+                </div>
+              </div>
+              <a href="/plans" className="chat-notify-link"
+                style={{ background: 'var(--tng-purple-700)', color: 'white' }}>
+                Ver planos →
+              </a>
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="chat-composer">
+            <textarea
+              className="chat-input"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
+              placeholder="Escreva uma mensagem..."
+              rows={1}
+            />
+            <button
+              className="chat-send"
+              onClick={() => send()}
+              disabled={!input.trim() || loading}
+            >
+              Enviar
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
