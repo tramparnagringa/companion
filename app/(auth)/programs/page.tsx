@@ -18,7 +18,6 @@ export default async function ProgramsPage() {
   const hasAccess = ['student', 'mentor', 'admin'].includes(profile?.role ?? '')
 
   const enrollments = hasAccess ? await getAllEnrollments(user.id, supabase) : []
-  const enrolledProgramIds = new Set(enrollments.map(e => e.program_id))
 
   const { data: programs } = await supabase
     .from('programs')
@@ -26,88 +25,126 @@ export default async function ProgramsPage() {
     .eq('store_visible', true)
     .order('display_order')
 
+  const firstName = profile?.full_name?.split(' ')[0] ?? null
+
+  // Count actual completed days from day_activities (current_day in user_programs is unreliable)
+  const enrollmentIds = enrollments.map(e => e.id)
+  const { data: doneActivities } = enrollmentIds.length > 0
+    ? await supabase
+        .from('day_activities')
+        .select('program_enrollment_id')
+        .in('program_enrollment_id', enrollmentIds)
+        .eq('status', 'done')
+    : { data: [] as { program_enrollment_id: string }[] }
+
+  const completedByEnrollment = new Map<string, number>()
+  for (const row of doneActivities ?? []) {
+    if (!row.program_enrollment_id) continue
+    completedByEnrollment.set(
+      row.program_enrollment_id,
+      (completedByEnrollment.get(row.program_enrollment_id) ?? 0) + 1
+    )
+  }
+
+  const enrollmentSummaries = enrollments.map(e => ({
+    id:            e.id,
+    slug:          e.program.slug,
+    name:          e.program.name,
+    completedDays: completedByEnrollment.get(e.id) ?? 0,
+    totalDays:     e.program.total_days ?? 30,
+    status:        e.status,
+  }))
+
+  // All visible programs — enrolled ones show "Acessar", others show "Comprar"
+  const storePrograms = programs ?? []
+
   return (
     <div style={{
       minHeight: '100vh',
-      background: 'var(--bg)',
-      display: 'flex',
-      alignItems: 'flex-start',
-      justifyContent: 'center',
-      padding: '60px 24px 80px',
-      fontFamily: 'var(--font)',
+      background: 'var(--tng-cream)',
+      fontFamily: 'var(--tng-font-body)',
     }}>
-      <div style={{ width: '100%', maxWidth: 780 }}>
+      <style>{`
+        .pgm-header {
+          display: flex; align-items: center; justify-content: space-between;
+          height: 72px; padding: 0 40px;
+          border-bottom: 1px solid var(--tng-rule);
+          background: var(--tng-cream);
+        }
+        .pgm-brand-sub {
+          font-family: var(--tng-font-mono); font-size: 10px;
+          text-transform: uppercase; letter-spacing: .20em;
+          color: var(--tng-coral); margin-top: 5px;
+        }
+        .pgm-back {
+          display: inline-flex; align-items: center; gap: 8px;
+          padding: 9px 16px; border-radius: 999px;
+          border: 1px solid var(--tng-rule); background: var(--tng-paper);
+          color: var(--tng-ink); font-size: 14px; font-weight: 500;
+          text-decoration: none; white-space: nowrap;
+        }
+        .pgm-footer {
+          border-top: 1px solid var(--tng-rule);
+          padding: 20px 40px;
+          display: flex; align-items: center; justify-content: space-between;
+          background: var(--tng-paper);
+        }
+        @media (max-width: 768px) {
+          .pgm-header   { height: auto; padding: 14px 20px; }
+          .pgm-brand-sub { display: none; }
+          .pgm-back     { padding: 7px 12px; font-size: 12px; }
+          .pgm-footer   { padding: 16px 20px; flex-direction: column; gap: 8px; align-items: flex-start; }
+        }
+      `}</style>
 
-        {/* Back link for users who already have access */}
-        {hasAccess && (
-          <div style={{ marginBottom: 32 }}>
-            <a href="/today" style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontSize: 12, color: 'var(--text3)',
-              background: 'var(--bg3)', border: '0.5px solid var(--border)',
-              borderRadius: 'var(--rsm)', padding: '6px 12px',
-              textDecoration: 'none',
-            }}>
-              ← Voltar ao app
-            </a>
+      {/* ── Header ─────────────────────────────────────────────── */}
+      <header className="pgm-header">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <img src="/logo-mark.svg" width={38} height={38} alt="TNG" style={{ flexShrink: 0 }} />
+          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+            <span style={{
+              fontFamily: 'var(--tng-font-display)', fontWeight: 700, fontSize: 16,
+              letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--tng-purple-700)',
+            }}>Trampar na Gringa</span>
+            <span className="pgm-brand-sub">Companion</span>
           </div>
-        )}
-
-        {/* Hero */}
-        <div style={{ marginBottom: 52 }}>
-          <div style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: '.12em',
-            textTransform: 'uppercase', color: 'var(--accent)',
-            marginBottom: 20,
-            display: 'flex', alignItems: 'center', gap: 7,
-          }}>
-            <span style={{ width: 5, height: 5, background: 'var(--accent)', borderRadius: '50%', display: 'inline-block' }} />
-            TNG Companion
-          </div>
-
-          <h1 style={{
-            fontSize: 32, fontWeight: 600, color: 'var(--text)',
-            margin: '0 0 14px', lineHeight: 1.2, letterSpacing: '-.01em',
-          }}>
-            Sua vaga internacional<br />começa aqui.
-          </h1>
-          <p style={{
-            fontSize: 15, color: 'var(--text2)', margin: 0, lineHeight: 1.7,
-            maxWidth: 520,
-          }}>
-            Programas estruturados com IA como co-piloto. Você sai com CV, LinkedIn, estratégia de candidatura e entrevistas simuladas — tudo pronto para o mercado internacional.
-          </p>
         </div>
 
-        {/* Program cards */}
-        <ProgramStore programs={programs ?? []} enrolledProgramIds={[...enrolledProgramIds]} />
-
-        {/* Footer */}
-        <div style={{ marginTop: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {!hasAccess ? (
-            <div style={{ fontSize: 13, color: 'var(--text3)' }}>
-              Já comprou?{' '}
-              <a
-                href="https://wa.me/5511999999999"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: 'var(--text2)', textDecoration: 'underline' }}
-              >
-                Fale com a equipe TNG →
-              </a>
-            </div>
-          ) : <div />}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+          {enrollments.length > 0 && (
+            <a href="/today" className="pgm-back">← Voltar ao app</a>
+          )}
           <form action="/auth/signout" method="post">
             <button type="submit" style={{
-              fontSize: 12, color: 'var(--text4)', background: 'none',
-              border: 'none', cursor: 'pointer', fontFamily: 'var(--font)',
-              textDecoration: 'underline',
-            }}>
-              Sair
-            </button>
+              fontSize: 14, color: 'var(--tng-ink-3)',
+              background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+            }}>Sair</button>
           </form>
         </div>
+      </header>
+
+      {/* ── Content ────────────────────────────────────────────── */}
+      <ProgramStore
+        enrollments={enrollmentSummaries}
+        storePrograms={storePrograms}
+        firstName={firstName}
+      />
+
+      {/* ── Footer ─────────────────────────────────────────────── */}
+      <div className="pgm-footer">
+        <div style={{ fontSize: 13, color: 'var(--tng-ink-3)' }}>
+          {!hasAccess && (
+            <>Já comprou?{' '}
+              <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer"
+                style={{ color: 'var(--tng-ink-2)', textDecoration: 'underline' }}>
+                Fale com a equipe TNG →
+              </a>
+            </>
+          )}
+        </div>
+        <span style={{ fontSize: 13, color: 'var(--tng-mute)' }}>© Trampar na Gringa</span>
       </div>
+
     </div>
   )
 }

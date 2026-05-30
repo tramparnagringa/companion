@@ -25,12 +25,11 @@ interface SidebarProps {
 }
 
 export function Sidebar({
-  user,
+  user: _user,
   role: _role = 'student',
   enrollments = [],
   tokenUsed = 0,
   tokenTotal = 2_000_000,
-  plan = 'Bootcamp',
   isOpen = false,
   onClose,
 }: SidebarProps) {
@@ -65,9 +64,6 @@ export function Sidebar({
     : usedPct > 70
     ? 'var(--tng-warn)'
     : 'var(--tng-purple-700)'
-
-  const initials   = user?.email?.slice(0, 2).toUpperCase() ?? 'TN'
-  const displayName = user?.user_metadata?.full_name?.split(' ')[0] ?? user?.email ?? 'Usuário'
 
   // Sub-page within a program (e.g. viewing day 5)
   const viewingDayMatch = pathname.match(/^\/[^/]+\/days\/(\d+)$/)
@@ -203,49 +199,42 @@ export function Sidebar({
             Programa
           </div>
           <div style={{ position: 'relative' }}>
-            {enrollments.length === 1 ? (
-              <div style={{
-                width: '100%', padding: '9px 12px',
+            <select
+              value={activeSlug ?? ''}
+              onChange={e => {
+                if (e.target.value === '__programs__') router.push('/programs')
+                else router.push(`/${e.target.value}/today`)
+              }}
+              style={{
+                width: '100%', padding: '9px 28px 9px 12px',
                 borderRadius: 10, fontSize: 13, fontWeight: 500,
                 background: 'var(--tng-cream)',
                 border: '1px solid var(--tng-rule)',
                 color: 'var(--tng-ink)',
-              }}>
-                {enrollments[0].name}
-              </div>
-            ) : (
-              <>
-                <select
-                  value={activeSlug ?? ''}
-                  onChange={e => router.push(`/${e.target.value}/today`)}
-                  style={{
-                    width: '100%', padding: '9px 28px 9px 12px',
-                    borderRadius: 10, fontSize: 13, fontWeight: 500,
-                    background: 'var(--tng-cream)',
-                    border: '1px solid var(--tng-rule)',
-                    color: 'var(--tng-ink)',
-                    cursor: 'pointer', outline: 'none',
-                    appearance: 'none', WebkitAppearance: 'none',
-                    fontFamily: 'inherit',
-                    transition: 'border-color 120ms',
-                  }}
-                >
-                  {enrollments.map(e => (
-                    <option key={e.id} value={e.slug}>{e.name}</option>
-                  ))}
-                </select>
-                <svg
-                  viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7"
-                  style={{
-                    width: 12, height: 12, position: 'absolute', right: 10,
-                    top: '50%', transform: 'translateY(-50%)',
-                    color: 'var(--tng-ink-3)', pointerEvents: 'none',
-                  }}
-                >
-                  <polyline points="4,6 8,10 12,6" />
-                </svg>
-              </>
-            )}
+                cursor: enrollments.length > 1 ? 'pointer' : 'default',
+                outline: 'none',
+                appearance: 'none', WebkitAppearance: 'none',
+                fontFamily: 'inherit',
+                transition: 'border-color 120ms',
+              }}
+            >
+              {enrollments.map(e => (
+                <option key={e.id} value={e.slug}>{e.name}</option>
+              ))}
+              <option disabled style={{ color: 'var(--tng-mute)' }}>──────────</option>
+              <option value="__programs__">Ver todos os programas →</option>
+            </select>
+            <svg
+              viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7"
+              style={{
+                width: 12, height: 12, position: 'absolute', right: 10,
+                top: '50%', transform: 'translateY(-50%)',
+                color: 'var(--tng-ink-3)', pointerEvents: 'none',
+                opacity: enrollments.length > 1 ? 1 : 0.3,
+              }}
+            >
+              <polyline points="4,6 8,10 12,6" />
+            </svg>
           </div>
         </div>
       )}
