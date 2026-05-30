@@ -141,7 +141,11 @@ export async function POST(req: Request) {
           userId!,
           totalInputTokens + totalOutputTokens,
           interactionType,
-          { day_number: dayNumber },
+          {
+            day_number:  dayNumber       ?? null,
+            program_id:  enrollment?.program_id   ?? null,
+            enrollment_id: enrollment?.id ?? null,
+          },
           dayModel,
           totalInputTokens,
           totalOutputTokens

@@ -34,6 +34,7 @@ export interface UserEnrollment {
   id: string
   user_id: string
   program_id: string
+  current_day: number
   status: 'active' | 'completed' | 'paused' | 'cancelled'
   started_at: string
   completed_at: string | null
