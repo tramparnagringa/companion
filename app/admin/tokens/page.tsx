@@ -13,6 +13,7 @@ interface UsageRow {
   input_tokens: number | null
   output_tokens: number | null
   created_at: string
+  metadata?: Record<string, string> | null
 }
 
 interface ProgramStat {
@@ -90,18 +91,6 @@ export function formatTokens(n: number): string {
   return String(n)
 }
 
-// Fetch all user IDs enrolled in a program (no row limit)
-async function buildFilteredUserIds(programId?: string): Promise<string[] | null> {
-  if (!programId) return null
-  const supabase = createServiceClient()
-  const { data } = await supabase
-    .from('user_programs')
-    .select('user_id')
-    .eq('program_id', programId)
-    .limit(10000)
-  return (data ?? []).map((e: { user_id: string }) => e.user_id)
-}
-
 // ── Data functions ─────────────────────────────────────────────────────────────
 
 async function getPrograms(): Promise<Program[]> {
@@ -117,17 +106,8 @@ async function getHeroData(period: Period, programId?: string, dayNumber?: numbe
   const supabase = createServiceClient()
   const { from, to, days } = getPeriodDates(period)
 
-  // Resolve user IDs for program filter
-  const programUserIds = await buildFilteredUserIds(programId)
-  if (programUserIds !== null && programUserIds.length === 0) {
-    return { totalCost: 0, costPerUser: 0, activeUsers: 0, projected: null,
-             dailyRate: 0, byModel: {} as Record<string, { count: number; tokens: number; cost: number }>,
-             byType: {} as Record<string, { count: number; tokens: number; cost: number }>,
-             students: [] as Array<{ id: string; name: string; tokens: number; cost: number; lastAt: string }>,
-             nameMap: {} as Record<string, string | null>, totalRows: 0,
-             dailyTrend: [] as Array<{ date: string; cost: number }> }
-  }
-
+  // Filter by metadata->>'program_id' directly — avoids over-counting users
+  // enrolled in multiple programs (user-id-based filter would include all their usage)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let usageQ: any = supabase
     .from('token_usage')
@@ -136,7 +116,7 @@ async function getHeroData(period: Period, programId?: string, dayNumber?: numbe
     .lte('created_at', to)
     .order('created_at', { ascending: false })
     .limit(50000)
-  if (programUserIds) usageQ = usageQ.in('user_id', programUserIds)
+  if (programId)              usageQ = usageQ.filter('metadata->>program_id', 'eq', programId)
   if (dayNumber !== undefined) usageQ = usageQ.filter('metadata->>day_number', 'eq', String(dayNumber))
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -145,7 +125,7 @@ async function getHeroData(period: Period, programId?: string, dayNumber?: numbe
     .select('tokens_consumed, model, input_tokens, output_tokens, created_at')
     .gte('created_at', new Date(Date.now() - 14 * 86_400_000).toISOString())
     .limit(50000)
-  if (programUserIds) trendQ = trendQ.in('user_id', programUserIds)
+  if (programId)              trendQ = trendQ.filter('metadata->>program_id', 'eq', programId)
   if (dayNumber !== undefined) trendQ = trendQ.filter('metadata->>day_number', 'eq', String(dayNumber))
 
   const [usageRes, profilesRes, trendRes] = await Promise.all([
@@ -230,14 +210,16 @@ async function getProgramStats(period: Period, programId?: string, dayNumber?: n
   const relevantUserIds = [...new Set(enrollments.map(e => e.user_id))]
 
   // Step 3: fetch usage scoped to those users + filters
+  // Also fetch metadata so we can use program_id from it for accurate attribution
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let usageQ: any = supabase
     .from('token_usage')
-    .select('user_id, tokens_consumed, model, input_tokens, output_tokens, created_at')
+    .select('user_id, tokens_consumed, model, input_tokens, output_tokens, created_at, metadata')
     .gte('created_at', from)
     .lte('created_at', to)
     .in('user_id', relevantUserIds)
     .limit(50000)
+  if (programId)               usageQ = usageQ.filter('metadata->>program_id', 'eq', programId)
   if (dayNumber !== undefined) usageQ = usageQ.filter('metadata->>day_number', 'eq', String(dayNumber))
 
   const { data: usageData } = await usageQ
@@ -265,9 +247,11 @@ async function getProgramStats(period: Period, programId?: string, dayNumber?: n
   }
 
   // Step 5: aggregate usage per program
+  // Prefer metadata->>'program_id' (accurate) — fall back to enrollment-based attribution
+  // for older records that pre-date the metadata field being added to the chat route
   const stats: Record<string, { users: Set<string>; tokens: number; cost: number }> = {}
   for (const r of usage) {
-    const pId = userProgram[r.user_id]
+    const pId = r.metadata?.program_id ?? userProgram[r.user_id]
     if (!pId) continue
     if (!stats[pId]) stats[pId] = { users: new Set(), tokens: 0, cost: 0 }
     stats[pId].users.add(r.user_id)

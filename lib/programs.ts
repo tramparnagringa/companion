@@ -27,6 +27,7 @@ export interface Program {
   description: string | null
   total_days: number
   week_themes: Record<string, string>
+  features: string[]
   is_published: boolean
 }
 

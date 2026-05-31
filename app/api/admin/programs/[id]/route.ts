@@ -51,6 +51,7 @@ export async function PUT(
     store_visible?: boolean
     display_order?: number
     features?: string[]
+    week_themes?: Record<string, string>
   }
 
   if (body.slug !== undefined) {

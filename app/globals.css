@@ -1384,6 +1384,116 @@ h1, h2, h3, h4, h5, h6 {
 }
 .day-welcome strong { color: var(--tng-purple-700); font-weight: 600; }
 
+/* ── Program hero (Day 1) ────────────────────────────────────── */
+.program-hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--tng-purple-900);
+  border-radius: 16px;
+  padding: 36px 40px;
+  margin-bottom: 36px;
+  color: var(--tng-cream);
+}
+
+.program-hero-wm {
+  position: absolute;
+  right: -16px;
+  bottom: -28px;
+  font-size: 180px;
+  line-height: 1;
+  opacity: 0.05;
+  transform: rotate(-10deg);
+  pointer-events: none;
+  user-select: none;
+}
+
+.program-hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--tng-font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .18em;
+  text-transform: uppercase;
+  color: var(--tng-lime);
+  margin-bottom: 16px;
+}
+
+.program-hero-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tng-lime);
+  flex-shrink: 0;
+}
+
+.program-hero-name {
+  font-family: var(--tng-font-display);
+  font-weight: 800;
+  font-size: clamp(22px, 3.5vw, 30px);
+  color: var(--tng-cream);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin-bottom: 12px;
+}
+
+.program-hero-welcome {
+  font-size: 15px;
+  color: var(--tng-night-ink2);
+  line-height: 1.65;
+  margin-bottom: 6px;
+  max-width: 58ch;
+}
+
+.program-hero-desc {
+  font-size: 14px;
+  color: var(--tng-night-ink2);
+  line-height: 1.7;
+  margin-bottom: 0;
+  max-width: 60ch;
+  opacity: 0.8;
+}
+
+.program-hero-weeks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: 22px;
+}
+
+.program-hero-week-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  padding: 5px 13px 5px 8px;
+  font-size: 13px;
+  color: var(--tng-night-ink);
+}
+
+.phwc-num {
+  font-family: var(--tng-font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  color: var(--tng-purple-900);
+  background: var(--tng-lime);
+  border-radius: 999px;
+  padding: 2px 7px;
+}
+
+@media (max-width: 768px) {
+  .program-hero         { padding: 24px 20px; margin-bottom: 24px; }
+  .program-hero-wm      { font-size: 120px; }
+  .program-hero-name    { font-size: 20px; }
+  .program-hero-welcome { font-size: 14px; }
+}
+
 /* ── Today page greeting ─────────────────────────────────────── */
 .today-greeting {
   margin-bottom: 40px;

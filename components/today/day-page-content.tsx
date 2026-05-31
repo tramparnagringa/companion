@@ -17,11 +17,14 @@ interface Props {
   enrollmentId?: string
   programId?: string
   programName?: string
+  programDescription?: string | null
+  programFeatures?: string[]
+  programWeekThemes?: Record<string, string>
   slug?: string
   programDay?: ProgramDay | null
 }
 
-export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysProp, enrollmentId: enrollmentIdProp, programId: programIdProp, programName: programNameProp, slug: slugProp, programDay: programDayProp }: Props) {
+export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysProp, enrollmentId: enrollmentIdProp, programId: programIdProp, programName: programNameProp, programDescription, programFeatures, programWeekThemes, slug: slugProp, programDay: programDayProp }: Props) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -158,10 +161,17 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
   // Number of days in this week (for progress pips)
   const daysThisWeek = Math.min(7, totalDays - (dayDef.week - 1) * 7)
   const dayInWeek   = ((dayNumber - 1) % 7) + 1
-  const completedInWeek = completedDayNumbers.filter(d => {
-    const w = Math.ceil(d / 7)
-    return w === dayDef.week && d !== dayNumber
-  }).length
+
+  // Hero: shown on any Day 1 view — gives program context on the first day
+  const showHero = dayNumber === 1
+
+  // Week chips — only from DB; if empty/missing, stepper doesn't render
+  const weekChips: { week: number; theme: string }[] = programWeekThemes
+    ? Object.entries(programWeekThemes)
+        .map(([k, v]) => ({ week: parseInt(k, 10), theme: v.trim() }))
+        .filter(c => !isNaN(c.week) && c.theme.length > 0)
+        .sort((a, b) => a.week - b.week)
+    : []
 
   // Render title: *word* → coral Instrument Serif italic  (e.g. "Experiências com *impacto* e métricas.")
   function renderTitle(name: string) {
@@ -195,6 +205,137 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
 
   return (
     <div className="page-col">
+      <style>{`
+        /* ── Day 1 program hero — two-panel card ───────────────── */
+        .phero-card {
+          display: grid;
+          grid-template-columns: 1.2fr 1fr;
+          border: 1.5px solid var(--tng-ink);
+          border-radius: 18px;
+          overflow: hidden;
+          margin-bottom: 112px;
+        }
+        .phero-left {
+          background: var(--tng-purple-900);
+          padding: 44px 52px;
+          display: flex;
+          flex-direction: column;
+          position: relative;
+          overflow: hidden;
+        }
+        .phero-left-wm {
+          position: absolute; right: -20px; bottom: -30px;
+          font-size: 160px; line-height: 1; opacity: .05;
+          transform: rotate(-10deg); pointer-events: none; user-select: none;
+        }
+        .phero-eyebrow {
+          display: inline-flex; align-items: center; gap: 8px;
+          font-family: var(--tng-font-mono); font-size: 11px; font-weight: 700;
+          letter-spacing: .18em; text-transform: uppercase;
+          color: var(--tng-lime); margin-bottom: 14px;
+        }
+        .phero-dot {
+          width: 7px; height: 7px; border-radius: 50%;
+          background: var(--tng-lime); flex-shrink: 0; display: inline-block;
+        }
+        .phero-name {
+          font-family: var(--tng-font-display); font-weight: 800;
+          font-size: clamp(26px, 3.2vw, 36px); color: var(--tng-cream);
+          line-height: 1.1; letter-spacing: -.03em; margin-bottom: 16px;
+          position: relative; z-index: 1;
+        }
+        .phero-desc {
+          font-size: 16px; color: var(--tng-night-ink2);
+          line-height: 1.65; flex: 1; margin-bottom: 32px;
+          position: relative; z-index: 1;
+        }
+        /* Week stepper */
+        .phero-stepper {
+          display: flex; align-items: flex-start;
+          position: relative; z-index: 1;
+        }
+        .phero-stepper::before {
+          content: '';
+          position: absolute; top: 13px;
+          left: 14px; right: 14px; height: 1px;
+          background: rgba(255,255,255,.18);
+        }
+        .phero-step {
+          display: flex; flex-direction: column; align-items: center;
+          flex: 1; position: relative; z-index: 1;
+        }
+        .phero-step-circle {
+          width: 28px; height: 28px; border-radius: 50%;
+          background: transparent; border: 1.5px solid rgba(255,255,255,.22);
+          color: rgba(255,255,255,.35);
+          font-family: var(--tng-font-mono); font-size: 12px; font-weight: 700;
+          display: flex; align-items: center; justify-content: center;
+          margin-bottom: 7px;
+        }
+        .phero-step-circle.ph-active {
+          background: var(--tng-lime); border-color: var(--tng-lime);
+          color: var(--tng-purple-900);
+        }
+        .phero-step-label {
+          font-size: 10px; color: rgba(255,255,255,.3);
+          text-align: center; white-space: nowrap; letter-spacing: .01em;
+        }
+        .phero-step-label.ph-active {
+          color: var(--tng-cream); font-weight: 600;
+        }
+        /* Right panel */
+        .phero-right {
+          background: var(--tng-paper);
+          padding: 44px 52px;
+          display: flex; flex-direction: column;
+          border-left: 1.5px solid var(--tng-ink);
+        }
+        .phero-features {
+          list-style: none; padding: 0; margin: 0;
+          display: flex; flex-direction: column; gap: 16px; flex: 1;
+        }
+        .phero-feature-item {
+          display: flex; align-items: flex-start; gap: 12px;
+          font-size: 15.5px; color: var(--tng-ink-2); line-height: 1.45;
+        }
+        .phero-check {
+          width: 22px; height: 22px; border-radius: 50%;
+          background: var(--tng-lime); flex-shrink: 0;
+          display: flex; align-items: center; justify-content: center;
+          margin-top: 1px;
+        }
+        .phero-cta {
+          display: flex; align-items: center; justify-content: center;
+          margin-top: 32px; padding: 18px 28px;
+          background: var(--tng-coral); color: #fff;
+          border: 1.5px solid var(--tng-ink); border-radius: 999px;
+          font-size: 17px; font-weight: 600; font-family: inherit;
+          text-decoration: none; transition: transform .12s, box-shadow .12s;
+        }
+        .phero-cta:hover {
+          transform: translate(-2px,-2px);
+          box-shadow: 4px 4px 0 var(--tng-ink);
+        }
+        /* ── Stack below 1024px ─────────────────────────────────── */
+        @media (max-width: 1024px) {
+          .phero-card {
+            grid-template-columns: 1fr;
+            margin-bottom: 32px;
+          }
+          .phero-right {
+            border-left: none;
+            border-top: 1.5px solid var(--tng-ink);
+            padding: 28px 28px;
+          }
+          .phero-left         { padding: 32px 28px; }
+          .phero-name         { font-size: 24px; }
+          .phero-desc         { font-size: 15px; margin-bottom: 24px; }
+          .phero-step-label   { font-size: 9.5px; }
+          .phero-features     { gap: 13px; }
+          .phero-feature-item { font-size: 14.5px; }
+          .phero-cta          { font-size: 16px; padding: 16px 24px; margin-top: 24px; }
+        }
+      `}</style>
       <Topbar
         title={breadcrumb}
         streak={streak}
@@ -223,10 +364,80 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
       />
 
       <div className="page-scroll">
+
+        {/* ── Program Hero (Day 1) — full-width, outside page-content ── */}
+        {showHero && (() => {
+          const features = (programFeatures && programFeatures.length > 0)
+            ? programFeatures
+            : [`${totalDays} dias guiados por IA com sessões diárias personalizadas`,
+               'CV otimizado para recrutadores e sistemas ATS internacionais',
+               'LinkedIn que atrai recrutadores 24h por dia',
+               'Networking real com recrutadores das suas empresas-alvo',
+               'Simulação de entrevistas com feedback imediato']
+          return (
+            <div className="phero-card">
+              {/* Left: dark panel */}
+              <div className="phero-left">
+                <div className="phero-left-wm" aria-hidden>✌️</div>
+                <img src="/logo-mark.svg" alt="" width={36} height={36}
+                  style={{ marginBottom: 22, opacity: 0.9, position: 'relative', zIndex: 1 }} />
+                <div className="phero-eyebrow">
+                  <span className="phero-dot" />
+                  Seu programa
+                </div>
+                <div className="phero-name">{programName ?? 'Bem-vindo'}</div>
+                <div className="phero-desc">
+                  {programDescription
+                    ? programDescription
+                    : `${totalDays} dias para sair do zero a entrevistas internacionais. Aplicações diárias, CV otimizado, LinkedIn irresistível e networking real com recrutadores.`}
+                </div>
+                {weekChips.length > 0 && (
+                  <div className="phero-stepper">
+                    {weekChips.map(({ week, theme }) => {
+                      const active = week === dayDef.week
+                      return (
+                        <div key={week} className="phero-step">
+                          <div className={`phero-step-circle${active ? ' ph-active' : ''}`}>
+                            {week}
+                          </div>
+                          <div className={`phero-step-label${active ? ' ph-active' : ''}`}>
+                            {theme}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Right: features + CTA */}
+              <div className="phero-right">
+                <ul className="phero-features">
+                  {features.map((f, i) => (
+                    <li key={i} className="phero-feature-item">
+                      <span className="phero-check" aria-hidden>
+                        <svg viewBox="0 0 12 12" fill="none" stroke="currentColor"
+                          strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                          width="10" height="10" style={{ color: 'var(--tng-purple-900)' }}>
+                          <polyline points="2,6.5 5,9.5 10,2.5" />
+                        </svg>
+                      </span>
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <a href="#day-content" className="phero-cta">
+                  Começar Dia 1 →
+                </a>
+              </div>
+            </div>
+          )
+        })()}
+
         <div className="page-content">
 
-          {/* ── Greeting + Mini Dashboard (hoje only) ── */}
-          {isToday && (
+          {/* ── Greeting + Mini Dashboard (returning user, hoje only) ── */}
+          {isToday && !showHero && (
             <div className="today-greeting">
               <div className="today-greeting-hi">
                 Oi, <strong>{firstName}</strong>{doneCount > 0 ? ` — de volta ao dia ${dayNumber}` : ' — bem-vindo ao programa'} 👋
@@ -250,7 +461,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
           )}
 
           {/* ── Day Header ── */}
-          <div className="day-header">
+          <div id="day-content" className="day-header">
             <div className="day-eyebrow">
               <span className="day-eyebrow-pill">Dia {dayNumber} · Semana {dayDef.week}</span>
               {dayDef.cards.some(c => c.type !== 'learn') && (
@@ -286,13 +497,6 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
             </div>
           </div>
 
-          {/* Welcome note on Day 1 */}
-          {dayNumber === 1 && activityStatus === 'pending' && (
-            <div className="day-welcome">
-              <strong>Bem-vindo ao {programName ?? 'programa'}.</strong>{' '}
-              Comece pelo primeiro card — a IA já tem seu contexto e vai guiar você do início.
-            </div>
-          )}
 
           <TodayCards
             dayDef={dayDef}
