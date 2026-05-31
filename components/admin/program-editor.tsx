@@ -43,6 +43,7 @@ interface Program {
   store_visible: boolean
   display_order: number
   features: string[]
+  week_themes: Record<string, string> | null
   days: ProgramDay[]
 }
 
@@ -85,6 +86,12 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
     store_visible: program.store_visible,
     display_order: program.display_order,
     features_text: (program.features ?? []).join('\n'),
+    // week_themes stored as array indexed by week-1; e.g. ["Clareza", "Construir", "Escalar", "Performar"]
+    week_themes_arr: (() => {
+      const numWeeks = Math.ceil(program.total_days / 7)
+      const src = program.week_themes ?? {}
+      return Array.from({ length: numWeeks }, (_, i) => src[String(i + 1)] ?? '')
+    })(),
   })
 
   const currentPhase = useMemo(() => detectPhase(program.days), [program.days])
@@ -183,8 +190,14 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
           store_visible: headerForm.store_visible,
           display_order: Number(headerForm.display_order) || 0,
           features: headerForm.features_text.split('\n').map(s => s.trim()).filter(Boolean),
+          week_themes: Object.fromEntries(
+            headerForm.week_themes_arr.map((v, i) => [String(i + 1), v.trim()])
+          ),
         }),
       })
+      const newWeekThemes = Object.fromEntries(
+        headerForm.week_themes_arr.map((v, i) => [String(i + 1), v.trim()])
+      )
       if (res.ok) setProgram(p => ({
         ...p,
         name: headerForm.name,
@@ -199,6 +212,7 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
         store_visible: headerForm.store_visible,
         display_order: Number(headerForm.display_order) || 0,
         features: headerForm.features_text.split('\n').map(s => s.trim()).filter(Boolean),
+        week_themes: newWeekThemes,
       }))
     } finally {
       setSavingHeader(false)
@@ -437,6 +451,37 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
                 ? 'Aparece na página de compra para novos usuários'
                 : 'Não aparece na página de compra'}
             </span>
+          </div>
+        </div>
+
+        {/* Week themes */}
+        <div style={{
+          borderTop: '0.5px solid var(--border)', marginTop: 14, paddingTop: 14, marginBottom: 14,
+        }}>
+          <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 10 }}>
+            Temas das semanas — timeline do Dia 1
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            {headerForm.week_themes_arr.map((theme, idx) => (
+              <div key={idx} style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: 8, alignItems: 'center' }}>
+                <label style={{ ...labelStyle, marginBottom: 0, color: 'var(--text3)' }}>
+                  Semana {idx + 1}
+                </label>
+                <input
+                  value={theme}
+                  onChange={e => setHeaderForm(f => {
+                    const arr = [...f.week_themes_arr]
+                    arr[idx] = e.target.value
+                    return { ...f, week_themes_arr: arr }
+                  })}
+                  placeholder={`ex: Clareza`}
+                  style={inputStyle}
+                />
+              </div>
+            ))}
+          </div>
+          <div style={{ fontSize: 10, color: 'var(--text4)', marginTop: 6 }}>
+            Aparece como timeline no card de boas-vindas do Dia 1.
           </div>
         </div>
 

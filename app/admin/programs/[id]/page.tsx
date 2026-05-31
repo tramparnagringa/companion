@@ -22,9 +22,13 @@ export default async function ProgramDetailPage({
     cards: Array.isArray(d.cards) ? (d.cards as { type: 'learn' | 'ai' | 'action' | 'reflect'; title: string; description: string }[]) : undefined,
   }))
 
+  const program = {
+    ...programRes.data,
+    days,
+    week_themes: (programRes.data.week_themes ?? null) as Record<string, string> | null,
+  }
+
   return (
-    <ProgramEditor
-      program={{ ...programRes.data, days }}
-    />
+    <ProgramEditor program={program} />
   )
 }
