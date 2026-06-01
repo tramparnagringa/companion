@@ -1,6 +1,18 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/service'
 import { ProgramEditor } from '@/components/admin/program-editor'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}): Promise<Metadata> {
+  const { id } = await params
+  const service = createServiceClient()
+  const { data } = await service.from('programs').select('name').eq('id', id).single()
+  return { title: data?.name ?? 'Programa' }
+}
 
 export default async function ProgramDetailPage({
   params,

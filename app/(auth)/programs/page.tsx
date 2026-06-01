@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
 import { createServerClient } from '@/lib/supabase/server'
 import { getAllEnrollments } from '@/lib/programs'
 import { redirect } from 'next/navigation'
+
+export const metadata: Metadata = { title: 'Programas' }
 import { ProgramStore } from '@/components/program-store'
 
 export default async function ProgramsPage() {

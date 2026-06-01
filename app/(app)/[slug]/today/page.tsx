@@ -1,8 +1,11 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getCurrentDay } from '@/lib/days'
 import { getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
 import { DayPageContent } from '@/components/today/day-page-content'
+
+export const metadata: Metadata = { title: 'Hoje' }
 
 export default async function ProgramTodayPage({
   params,

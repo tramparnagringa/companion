@@ -1,9 +1,12 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { getCurrentDay, getStreak } from '@/lib/days'
 import { getEnrollmentBySlug, getProgramDays } from '@/lib/programs'
+
+export const metadata: Metadata = { title: 'Programa' }
 
 function getDayTags(cards: { type: string }[]): string[] {
   const types = new Set(cards.map(c => c.type))

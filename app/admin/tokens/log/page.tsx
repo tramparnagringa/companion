@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/service'
 import { computeCostUsd, formatUsd } from '@/lib/anthropic/pricing'
 import { getPeriodDates, formatTokens, MODEL_SHORT, INTERACTION_LABELS } from '../page'
+
+export const metadata: Metadata = { title: 'Log de Tokens' }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
 import { createServiceClient } from '@/lib/supabase/service'
 import { StudentsTable } from '@/components/mentor/students-table'
 import { PendingRow } from '@/components/admin/pending-row'
+
+export const metadata: Metadata = { title: 'Alunos' }
 
 async function getStudents() {
   const supabase = createServiceClient()

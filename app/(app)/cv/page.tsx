@@ -1,5 +1,8 @@
+import type { Metadata } from 'next'
 import { createServerClient } from '@/lib/supabase/server'
 import { CvEditor } from '@/components/cv/cv-editor'
+
+export const metadata: Metadata = { title: 'CV' }
 
 export default async function CVPage() {
   const supabase = await createServerClient()
