@@ -1,9 +1,12 @@
+import type { Metadata } from 'next'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { PlanCard } from '@/components/plans/plan-card'
 import { getStreak } from '@/lib/days'
 import { getEnrollmentBySlug } from '@/lib/programs'
+
+export const metadata: Metadata = { title: 'Planos' }
 
 interface ChecklistItem {
   id: string

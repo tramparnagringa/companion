@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { getStreak } from '@/lib/days'
+
+export const metadata: Metadata = { title: 'Dossier' }
 
 export default async function ProfilePage() {
   const supabase = await createServerClient()

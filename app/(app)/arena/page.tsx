@@ -1,5 +1,8 @@
+import type { Metadata } from 'next'
 import { createServerClient } from '@/lib/supabase/server'
 import { ArenaShell } from '@/components/arena/arena-shell'
+
+export const metadata: Metadata = { title: 'Interview Arena' }
 
 export default async function ArenaPage() {
   const supabase = await createServerClient()

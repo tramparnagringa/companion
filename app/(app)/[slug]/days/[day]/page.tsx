@@ -1,7 +1,18 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
 import { DayPageContent } from '@/components/today/day-page-content'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ day: string }>
+}): Promise<Metadata> {
+  const { day } = await params
+  const n = parseInt(day, 10)
+  return { title: isNaN(n) ? 'Dia' : `Dia ${n}` }
+}
 
 export default async function ProgramDayPage({
   params,

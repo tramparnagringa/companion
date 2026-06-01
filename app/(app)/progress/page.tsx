@@ -1,7 +1,10 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { DAYS, WEEK_THEMES, getCurrentDay, getStreak } from '@/lib/days'
+
+export const metadata: Metadata = { title: 'Progresso' }
 
 export default async function ProgressPage() {
   const supabase = await createServerClient()

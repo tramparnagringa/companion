@@ -37,7 +37,7 @@ const mono = JetBrains_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'TNG Companion',
+  title: { template: '%s | TNG Companion', default: 'TNG Companion' },
   description: 'Seu guia de IA para vagas internacionais',
 }
 

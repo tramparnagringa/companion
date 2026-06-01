@@ -1,6 +1,9 @@
+import type { Metadata } from 'next'
 import { createServerClient } from '@/lib/supabase/server'
 import { BoardShell } from '@/components/board/board-shell'
 import type { Job } from '@/components/board/job-detail'
+
+export const metadata: Metadata = { title: 'Jobs' }
 
 export default async function BoardPage() {
   const supabase = await createServerClient()

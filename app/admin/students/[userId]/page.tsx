@@ -1,7 +1,19 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createServiceClient } from '@/lib/supabase/service'
 import { StudentTabs } from '@/components/mentor/student-tabs'
 import type { StudentData } from '@/components/mentor/student-tabs'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ userId: string }>
+}): Promise<Metadata> {
+  const { userId } = await params
+  const service = createServiceClient()
+  const { data } = await service.from('profiles').select('full_name').eq('id', userId).single()
+  return { title: data?.full_name ?? 'Aluno' }
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRecord = Record<string, any>

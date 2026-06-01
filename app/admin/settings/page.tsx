@@ -1,3 +1,7 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = { title: 'Configurações' }
+
 export default function AdminSettingsPage() {
   return (
     <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px', background: 'var(--bg)' }}>
