@@ -417,6 +417,16 @@ export async function executeToolCall(
 
     case 'set_chat_title': {
       if (!sessionId) return { ok: false, reason: 'no session' }
+      // Only update if title is not yet set (null or default placeholder)
+      const { data: existing } = await (supabase as any)
+        .from('chat_sessions')
+        .select('title')
+        .eq('id', sessionId)
+        .eq('user_id', userId)
+        .single()
+      if (existing?.title && existing.title !== 'Nova conversa') {
+        return { ok: true, skipped: true }
+      }
       const title = (input.title as string).slice(0, 100)
       const { error } = await (supabase as any)
         .from('chat_sessions')

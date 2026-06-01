@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { checkTokenBalance, recordTokenUsage } from '@/lib/anthropic/check-tokens'
-import { buildSystemPrompt, type JobContext } from '@/lib/anthropic/system-prompts'
+import { buildSystemPrompt, type JobContext, type RecentContext } from '@/lib/anthropic/system-prompts'
 import { ALL_TOOLS } from '@/lib/anthropic/tools'
 import { executeToolCall } from '@/lib/anthropic/tool-executor'
 import { getActiveEnrollment, getDayForUser, getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
@@ -43,16 +43,37 @@ export async function POST(req: Request) {
     ? await getEnrollmentBySlug(userId!, slug, supabase!)
     : await getActiveEnrollment(userId!, supabase!)
 
-  const [{ data: candidateProfile }, programDay] = await Promise.all([
+  const [{ data: candidateProfile }, programDay, recentSessionsResult, recentNotesResult] = await Promise.all([
     supabase!.from('candidate_profiles').select('*').eq('user_id', userId!).single(),
     mode === 'task' && dayNumber !== undefined && enrollment
       ? getProgramDay(enrollment.program_id, dayNumber, supabase!)
       : mode === 'task' && dayNumber !== undefined
         ? getDayForUser(userId!, dayNumber, supabase!)
         : Promise.resolve(null),
+    supabase!
+      .from('chat_sessions' as any)
+      .select('title, mode, day_number, updated_at')
+      .eq('user_id', userId!)
+      .not('title', 'is', null)
+      .neq('title', 'Nova conversa')
+      .order('updated_at', { ascending: false })
+      .limit(5),
+    supabase!
+      .from('action_notes' as any)
+      .select('title, content, type, completed, created_at')
+      .eq('user_id', userId!)
+      .order('created_at', { ascending: false })
+      .limit(5),
   ])
 
-  const systemPrompt = buildSystemPrompt(mode!, dayNumber, candidateProfile, programDay?.ai_instructions, jobContext)
+  const recentSessions = (recentSessionsResult.data ?? []) as unknown as RecentContext['recentSessions']
+  const recentNotes    = (recentNotesResult.data    ?? []) as unknown as RecentContext['recentNotes']
+  const recentContext: RecentContext | null =
+    recentSessions.length > 0 || recentNotes.length > 0
+      ? { recentSessions, recentNotes }
+      : null
+
+  const systemPrompt = buildSystemPrompt(mode!, dayNumber, candidateProfile, programDay?.ai_instructions, jobContext, recentContext)
   const dayModel     = 'claude-haiku-4-5-20251001'
   const dayMaxTokens = mode === 'cv' ? 2048 : 1200
 

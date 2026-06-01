@@ -4,6 +4,42 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import {
+  User, UserCheck, UserPlus, FileText, FilePen,
+  BookmarkCheck, CalendarDays, CalendarCheck,
+  Hash, Briefcase, Link2, Star, BarChart2, Pencil, Sparkles,
+} from 'lucide-react'
+
+type ToolMeta = { icon: React.ReactNode; label: string; color: string; type: 'read' | 'write' }
+
+const TOOL_META: Record<string, ToolMeta> = {
+  // --- profile (purple)
+  get_profile:           { icon: <User size={9} />,           label: 'Perfil carregado',        color: '#6A1A74', type: 'read'  },
+  update_profile:        { icon: <UserCheck size={9} />,      label: 'Perfil atualizado',       color: '#6A1A74', type: 'write' },
+  save_contact:          { icon: <UserPlus size={9} />,       label: 'Contato salvo',           color: '#6A1A74', type: 'write' },
+  save_linkedin_content: { icon: <Link2 size={9} />,          label: 'LinkedIn atualizado',     color: '#6A1A74', type: 'write' },
+  // --- notes / plans (amber)
+  get_action_notes:      { icon: <FileText size={9} />,       label: 'Notas carregadas',        color: '#C47D0E', type: 'read'  },
+  save_action_note:      { icon: <BookmarkCheck size={9} />,  label: 'Nota salva',              color: '#C47D0E', type: 'write' },
+  save_star_story:       { icon: <Star size={9} />,           label: 'História STAR salva',     color: '#C47D0E', type: 'write' },
+  // --- day / progress (green)
+  get_day_context:       { icon: <CalendarDays size={9} />,   label: 'Contexto do dia',         color: '#18895A', type: 'read'  },
+  get_day_activity:      { icon: <CalendarDays size={9} />,   label: 'Atividade carregada',     color: '#18895A', type: 'read'  },
+  save_day_output:       { icon: <CalendarCheck size={9} />,  label: 'Progresso salvo',         color: '#18895A', type: 'write' },
+  // --- jobs / career (coral)
+  create_job:            { icon: <Briefcase size={9} />,      label: 'Vaga criada',             color: '#B84E18', type: 'write' },
+  update_job_status:     { icon: <Briefcase size={9} />,      label: 'Status atualizado',       color: '#B84E18', type: 'write' },
+  get_jobs:              { icon: <Briefcase size={9} />,      label: 'Vagas carregadas',        color: '#B84E18', type: 'read'  },
+  get_application_stats: { icon: <BarChart2 size={9} />,      label: 'Estatísticas carregadas', color: '#B84E18', type: 'read'  },
+  // --- cv / documents (blue)
+  get_cv_draft:          { icon: <FileText size={9} />,       label: 'CV carregado',            color: '#2D6CDF', type: 'read'  },
+  save_cv_bullets:       { icon: <FilePen size={9} />,        label: 'CV atualizado',           color: '#2D6CDF', type: 'write' },
+  update_cv_section:     { icon: <FilePen size={9} />,        label: 'CV atualizado',           color: '#2D6CDF', type: 'write' },
+  // --- keywords (teal)
+  add_keywords:          { icon: <Hash size={9} />,           label: 'Keywords adicionadas',    color: '#0E8A8A', type: 'write' },
+  // --- meta (gray)
+  set_chat_title:        { icon: <Pencil size={9} />,         label: 'Título definido',         color: '#6E665B', type: 'write' },
+}
 
 interface Message {
   role: 'user' | 'assistant'
@@ -330,27 +366,36 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
               return (
               <div key={i} className={msg.role === 'user' ? 'chat-msg-user' : 'chat-msg-ai'}>
 
-                {msg.role === 'assistant' && !sameAsPrev && (
+                {msg.role === 'assistant' && (!sameAsPrev || (msg.toolCalls && msg.toolCalls.length > 0)) && (
                   <div className="chat-msg-ai-label">
-                    <span style={{ fontSize: 12 }}>✦</span>
-                    Mentor IA
+                    {!sameAsPrev && <><span style={{ fontSize: 12 }}>✦</span>Mentor IA</>}
+                    {msg.toolCalls && msg.toolCalls.length > 0 && (
+                      <div className="chat-tools">
+                        {msg.toolCalls.map((tool, ti) => {
+                          const meta: ToolMeta = TOOL_META[tool] ?? { icon: <Sparkles size={9} />, label: tool, color: '#6E665B', type: 'write' }
+                          return (
+                            <span
+                              key={ti}
+                              className="chat-tool-badge"
+                              title={meta.label}
+                              style={{
+                                color: meta.color,
+                                background: meta.color + '18',
+                                borderColor: meta.color + '50',
+                                borderStyle: meta.type === 'read' ? 'dashed' : 'solid',
+                              }}
+                            >
+                              {meta.icon}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {msg.role === 'user' && !sameAsPrev && userName && (
                   <div className="chat-msg-user-label">{userName}</div>
-                )}
-
-                {/* Tool badges above AI bubble */}
-                {msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0 && (
-                  <div className="chat-tools">
-                    {msg.toolCalls.map((tool, ti) => (
-                      <span key={ti} className="chat-tool-badge">
-                        <span className="chat-tool-badge-check">✓</span>
-                        {tool}()
-                      </span>
-                    ))}
-                  </div>
                 )}
 
                 {msg.role === 'user' ? (
