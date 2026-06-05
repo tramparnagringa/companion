@@ -188,13 +188,17 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
     )
   }
 
+  const currentWeekTheme = programWeekThemes?.[String(dayDef.week)]
+
   // Topbar breadcrumb: ProgramName / Semana N / Dia N
   // .crumb-detail elements are hidden on mobile (≤768px)
   const breadcrumb = (
     <div className="topbar-crumb">
       <strong>{programName ?? 'Programa'}</strong>
       <span className="sep crumb-detail">/</span>
-      <span className="crumb-detail">Semana {dayDef.week}</span>
+      <span className="crumb-detail">
+        Semana {dayDef.week}{currentWeekTheme ? ` — ${currentWeekTheme}` : ''}
+      </span>
       <span className="sep crumb-detail">/</span>
       <strong className="crumb-detail">Dia {dayNumber}</strong>
     </div>
@@ -214,10 +218,11 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
           border-radius: 18px;
           overflow: hidden;
           margin-bottom: 112px;
+          max-width: 960px;
         }
         .phero-left {
           background: var(--tng-purple-900);
-          padding: 44px 52px;
+          padding: 36px 40px;
           display: flex;
           flex-direction: column;
           position: relative;
@@ -286,7 +291,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
         /* Right panel */
         .phero-right {
           background: var(--tng-paper);
-          padding: 44px 52px;
+          padding: 36px 40px;
           display: flex; flex-direction: column;
           border-left: 1.5px solid var(--tng-ink);
         }
@@ -316,19 +321,18 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
           transform: translate(-2px,-2px);
           box-shadow: 4px 4px 0 var(--tng-ink);
         }
-        /* ── Stack below 1024px ─────────────────────────────────── */
-        @media (max-width: 1024px) {
+        /* ── Stack below 1200px ─────────────────────────────────── */
+        @media (max-width: 1200px) {
           .phero-card {
             grid-template-columns: 1fr;
-            margin-bottom: 32px;
+            margin-bottom: 64px;
           }
           .phero-right {
             border-left: none;
             border-top: 1.5px solid var(--tng-ink);
             padding: 28px 28px;
           }
-          .phero-left         { padding: 32px 28px; }
-          .phero-name         { font-size: 24px; }
+          .phero-left         { padding: 32px 28px 10px; }
           .phero-desc         { font-size: 15px; margin-bottom: 24px; }
           .phero-step-label   { font-size: 9.5px; }
           .phero-features     { gap: 13px; }
@@ -461,9 +465,9 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
           )}
 
           {/* ── Day Header ── */}
-          <div id="day-content" className="day-header">
+          <div id="day-content" className="day-header" style={{ scrollMarginTop: '32px' }}>
             <div className="day-eyebrow">
-              <span className="day-eyebrow-pill">Dia {dayNumber} · Semana {dayDef.week}</span>
+              <span className="day-eyebrow-pill">Dia {dayNumber} · Semana {dayDef.week}{currentWeekTheme ? ` — ${currentWeekTheme}` : ''}</span>
               {dayDef.cards.some(c => c.type !== 'learn') && (
                 <span className="day-eyebrow-meta">
                   {dayDef.cards
@@ -492,7 +496,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
                 )
               })}
               <span className="pip-label">
-                Semana {dayDef.week} · <strong>{dayInWeek}/{daysThisWeek} dias</strong>
+                Semana {dayDef.week}{currentWeekTheme ? ` — ${currentWeekTheme}` : ''} · <strong>{dayInWeek}/{daysThisWeek} dias</strong>
               </span>
             </div>
           </div>

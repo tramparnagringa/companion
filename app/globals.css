@@ -1260,7 +1260,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 /* Weeks container */
-.prog-weeks { display: flex; flex-direction: column; gap: 36px; }
+.prog-weeks { display: flex; flex-direction: column; gap: 28px; }
 
 /* Week section header — mono caps + horizontal rule via ::after */
 .prog-week-label {
@@ -1285,21 +1285,21 @@ h1, h2, h3, h4, h5, h6 {
 /* Day cards grid */
 .prog-week-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
 }
 @media (max-width: 768px) {
-  .prog-week-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .prog-week-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 }
 
 /* Individual day card */
 .prog-day-card {
   background: var(--tng-paper);
   border: 1px solid var(--tng-rule);
-  border-radius: 12px;
-  padding: 14px 16px;
+  border-radius: 16px;
+  padding: 18px 20px;
   display: flex;
-  gap: 12px;
+  gap: 14px;
   align-items: flex-start;
   text-decoration: none;
   cursor: pointer;
@@ -1329,13 +1329,13 @@ h1, h2, h3, h4, h5, h6 {
 /* Day number badge */
 .prog-day-num {
   font-family: var(--tng-font-mono);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.04em;
   background: var(--tng-bone);
   color: var(--tng-ink-3);
   border-radius: 8px;
-  padding: 6px 10px;
+  padding: 7px 11px;
   flex-shrink: 0;
   line-height: 1;
 }
@@ -1345,11 +1345,19 @@ h1, h2, h3, h4, h5, h6 {
 /* Day body */
 .prog-day-body { flex: 1; min-width: 0; }
 .prog-day-title {
-  font-size: 14px;
+  font-family: var(--tng-font-display);
+  font-size: 17px;
   font-weight: 500;
   color: var(--tng-ink);
-  line-height: 1.35;
+  line-height: 1.3;
   margin: 2px 0 10px;
+}
+.prog-day-card .prog-day-title em {
+  color: #FF6B35;
+  font-style: italic;
+  font-family: var(--tng-font-serif);
+  font-weight: 700;
+  letter-spacing: 1px;
 }
 .prog-day-title.current { color: var(--tng-purple-900); font-weight: 600; }
 .prog-day-title.locked  { color: var(--tng-ink-3); }
@@ -1358,11 +1366,11 @@ h1, h2, h3, h4, h5, h6 {
 .prog-day-badges { display: flex; gap: 4px; flex-wrap: wrap; }
 .prog-badge {
   font-family: var(--tng-font-mono);
-  font-size: 9.5px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   font-weight: 700;
-  padding: 2px 7px;
+  padding: 3px 8px;
   border-radius: 5px;
   line-height: 1.4;
 }

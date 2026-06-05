@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { getCurrentDay, getStreak } from '@/lib/days'
@@ -122,7 +124,9 @@ export default async function ProgramDaysPage({
                         </div>
                         <div className="prog-day-body">
                           <div className={`prog-day-title${stateClass ? ` ${stateClass}` : ''}`}>
-                            {dayDef.name}
+                            <ReactMarkdown remarkPlugins={[remarkGfm]} components={{ p: ({ children }) => <>{children}</> }}>
+                              {dayDef.name}
+                            </ReactMarkdown>
                           </div>
                           <div className="prog-day-badges">
                             {isDone ? (

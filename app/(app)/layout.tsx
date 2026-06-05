@@ -20,7 +20,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     getAllEnrollments(user.id, supabase),
   ])
 
-  const activeEnrollments = enrollments
+  const activeEnrollments = enrollments.sort((a, b) =>
+    a.program.name.localeCompare(b.program.name, 'pt')
+  )
 
   const tokenTotal  = balances?.reduce((s, b) => s + b.tokens_total, 0) ?? 0
   const tokenUsed   = balances?.reduce((s, b) => s + b.tokens_used,  0) ?? 0
