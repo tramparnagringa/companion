@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { LogoMark } from '@/components/ui/logo-mark'
 
 export default function LoginPage() {
   const [loading, setLoading] = useState<'google' | 'linkedin' | null>(null)
@@ -50,7 +51,7 @@ export default function LoginPage() {
       }}>
         {/* Brand */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 28 }}>
-          <img src="/logo-mark.svg" alt="TNG" width={28} height={28} />
+          <LogoMark size={28} />
           <div>
             <div style={{
               fontFamily: 'var(--tng-font-display)',

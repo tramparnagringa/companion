@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { createServerClient } from '@/lib/supabase/server'
 import { getAllEnrollments } from '@/lib/programs'
 import { redirect } from 'next/navigation'
+import { LogoMark } from '@/components/ui/logo-mark'
 
 export const metadata: Metadata = { title: 'Programas' }
 import { ProgramStore } from '@/components/program-store'
@@ -88,41 +89,48 @@ export default async function ProgramsPage() {
         }
         .pgm-footer {
           border-top: 1px solid var(--tng-rule);
-          padding: 20px 40px;
-          display: flex; align-items: center; justify-content: space-between;
           background: var(--tng-paper);
         }
+        .pgm-inner {
+          width: 100%; max-width: 1080px; margin: 0 auto; padding: 0 40px;
+          display: flex; align-items: center; justify-content: space-between;
+        }
+        .pgm-header .pgm-inner { height: 72px; }
+        .pgm-footer .pgm-inner { padding-top: 20px; padding-bottom: 20px; }
         @media (max-width: 768px) {
-          .pgm-header   { height: auto; padding: 14px 20px; }
+          .pgm-header   { height: auto; }
+          .pgm-inner    { padding: 14px 20px; height: auto !important; }
           .pgm-brand-sub { display: none; }
           .pgm-back     { padding: 7px 12px; font-size: 12px; }
-          .pgm-footer   { padding: 16px 20px; flex-direction: column; gap: 8px; align-items: flex-start; }
+          .pgm-footer .pgm-inner { flex-direction: column; gap: 8px; align-items: flex-start; }
         }
       `}</style>
 
       {/* ── Header ─────────────────────────────────────────────── */}
       <header className="pgm-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <img src="/logo-mark.svg" width={38} height={38} alt="TNG" style={{ flexShrink: 0 }} />
-          <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
-            <span style={{
-              fontFamily: 'var(--tng-font-display)', fontWeight: 700, fontSize: 16,
-              letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--tng-purple-700)',
-            }}>Trampar na Gringa</span>
-            <span className="pgm-brand-sub">Companion</span>
+        <div className="pgm-inner">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <LogoMark size={38} />
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
+              <span style={{
+                fontFamily: 'var(--tng-font-display)', fontWeight: 700, fontSize: 16,
+                letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--tng-purple-700)',
+              }}>Trampar na Gringa</span>
+              <span className="pgm-brand-sub">Companion</span>
+            </div>
           </div>
-        </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          {enrollments.length > 0 && (
-            <a href="/today" className="pgm-back">← Voltar ao app</a>
-          )}
-          <form action="/auth/signout" method="post">
-            <button type="submit" style={{
-              fontSize: 14, color: 'var(--tng-ink-3)',
-              background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-            }}>Sair</button>
-          </form>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
+            {enrollments.length > 0 && (
+              <a href="/today" className="pgm-back">← Voltar ao app</a>
+            )}
+            <form action="/auth/signout" method="post">
+              <button type="submit" style={{
+                fontSize: 14, color: 'var(--tng-ink-3)',
+                background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              }}>Sair</button>
+            </form>
+          </div>
         </div>
       </header>
 
@@ -135,17 +143,19 @@ export default async function ProgramsPage() {
 
       {/* ── Footer ─────────────────────────────────────────────── */}
       <div className="pgm-footer">
-        <div style={{ fontSize: 13, color: 'var(--tng-ink-3)' }}>
-          {!hasAccess && (
-            <>Já comprou?{' '}
-              <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer"
-                style={{ color: 'var(--tng-ink-2)', textDecoration: 'underline' }}>
-                Fale com a equipe TNG →
-              </a>
-            </>
-          )}
+        <div className="pgm-inner">
+          <div style={{ fontSize: 13, color: 'var(--tng-ink-3)' }}>
+            {!hasAccess && (
+              <>Já comprou?{' '}
+                <a href="https://wa.me/5511999999999" target="_blank" rel="noopener noreferrer"
+                  style={{ color: 'var(--tng-ink-2)', textDecoration: 'underline' }}>
+                  Fale com a equipe TNG →
+                </a>
+              </>
+            )}
+          </div>
+          <span style={{ fontSize: 13, color: 'var(--tng-mute)' }}>© Trampar na Gringa</span>
         </div>
-        <span style={{ fontSize: 13, color: 'var(--tng-mute)' }}>© Trampar na Gringa</span>
       </div>
 
     </div>

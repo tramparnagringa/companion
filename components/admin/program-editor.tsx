@@ -317,7 +317,7 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
           <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: '.06em', textTransform: 'uppercase', color: 'var(--text4)', marginBottom: 10 }}>
             Configuração de Tokens
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
             <div>
               <label style={labelStyle}>Alocação (tokens reais)</label>
               <input
@@ -329,20 +329,9 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
               />
               {headerForm.token_allocation !== '' && (
                 <div style={{ fontSize: 10, color: 'var(--text4)', marginTop: 3 }}>
-                  = {Math.floor(Number(headerForm.token_allocation) / (Number(headerForm.credit_ratio) || 10)).toLocaleString('pt-BR')} créditos
+                  = {Math.floor(Number(headerForm.token_allocation) / 1_000).toLocaleString('pt-BR')} créditos
                 </div>
               )}
-            </div>
-            <div>
-              <label style={labelStyle}>Razão de créditos (display)</label>
-              <input
-                type="number" min="1" step="1"
-                value={headerForm.credit_ratio}
-                onChange={e => setHeaderForm(f => ({ ...f, credit_ratio: Number(e.target.value) || 10 }))}
-                placeholder="10"
-                style={inputStyle}
-              />
-              <div style={{ fontSize: 10, color: 'var(--text4)', marginTop: 3 }}>tokens ÷ ratio = créditos exibidos</div>
             </div>
             <div>
               <label style={labelStyle}>Preço (R$)</label>

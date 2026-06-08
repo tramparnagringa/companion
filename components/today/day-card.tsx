@@ -95,7 +95,11 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
     startTransition(() => { saveCardState(dayNumber, checkKey(i), next, enrollmentId) })
   }
 
-  const ctaHref = card.cta?.href ?? `/chat?day=${dayNumber}${slug ? `&slug=${slug}` : ''}&prompt=${encodeURIComponent(`Quero começar o Dia ${dayNumber} — ${card.title}`)}`
+  const ctaHref = card.cta?.href ?? (
+    slug
+      ? `/${slug}/days/${dayNumber}/chat?prompt=${encodeURIComponent(`Quero começar o Dia ${dayNumber} — ${card.title}`)}`
+      : `/chat?day=${dayNumber}&prompt=${encodeURIComponent(`Quero começar o Dia ${dayNumber} — ${card.title}`)}`
+  )
 
   return (
     <div className={`lesson-card ${typeClass}${open ? ' open' : ''}${isDone ? ' done' : ''}`}>
@@ -232,7 +236,11 @@ export function DayCard({ card, cardIndex, dayNumber, savedState = {}, defaultOp
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 {!read && (
                   <a
-                    href={card.cta?.href ?? `/chat?day=${dayNumber}&mode=reflect${slug ? `&slug=${slug}` : ''}&prompt=${encodeURIComponent(`Dia ${dayNumber} — reflexão do dia`)}`}
+                    href={card.cta?.href ?? (
+                      slug
+                        ? `/${slug}/days/${dayNumber}/chat?reflect=true&prompt=${encodeURIComponent(`Reflexão do dia — ${card.title}`)}`
+                        : `/chat?day=${dayNumber}&reflect=true&prompt=${encodeURIComponent(`Reflexão do dia — ${card.title}`)}`
+                    )}
                     className="btn-action"
                   >
                     ◎ {card.cta?.label ?? 'Reflexão do dia'}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { LogoMark } from '@/components/ui/logo-mark'
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -109,6 +110,24 @@ export function ProgramStore({
     }
   }
 
+  async function handleEnrollFree(programId: string) {
+    setLoading(programId)
+    setError(null)
+    try {
+      const res  = await fetch('/api/payments/enroll-free', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ program_id: programId }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.redirect) { setError('Erro ao liberar acesso. Tente novamente.'); return }
+      window.location.href = data.redirect
+    } catch {
+      setError('Erro ao liberar acesso. Tente novamente.')
+    } finally {
+      setLoading(null)
+    }
+  }
+
   if (storePrograms.length === 0) return null
 
   return (
@@ -188,7 +207,7 @@ export function ProgramStore({
           }}>
             {enrollments.length > 0
               ? <>Continue sua jornada <em style={{ fontFamily: 'var(--tng-font-serif)', fontStyle: 'italic', fontWeight: 400, color: 'var(--tng-lime)' }}>internacional</em></>
-              : <>Destrave a próxima etapa da sua <em style={{ fontFamily: 'var(--tng-font-serif)', fontStyle: 'italic', fontWeight: 400, color: 'var(--tng-lime)' }}>candidatura</em></>
+              : <>Destrave a próxima etapa da sua <em style={{ fontFamily: 'var(--tng-font-serif)', fontStyle: 'italic', fontWeight: 400, color: 'var(--tng-lime)' }}>carreira internacional</em></>
             }
           </h2>
 
@@ -219,7 +238,7 @@ export function ProgramStore({
                 <div className="ps-product-main">
                   <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 18 }}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/logo-mark.svg" width={26} height={26} alt="TNG" />
+                    <LogoMark size={26} />
                     <span style={{
                       fontFamily: 'var(--tng-font-mono)', fontSize: 11, fontWeight: 700,
                       textTransform: 'uppercase', letterSpacing: '.14em', color: 'var(--tng-purple-700)',
@@ -291,54 +310,98 @@ export function ProgramStore({
                 ) : (
                   /* ── AVAILABLE: price + buy ──────────────────── */
                   <div className="ps-product-aside">
-                    <span style={{
-                      fontFamily: 'var(--tng-font-mono)', fontSize: 11,
-                      textTransform: 'uppercase', letterSpacing: '.16em', color: 'var(--tng-ink-3)',
-                    }}>
-                      Pagamento único
-                    </span>
-
-                    {p.price_brl != null ? (
-                      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, margin: '14px 0 2px' }}>
-                        <span style={{ fontSize: 26, fontWeight: 700, color: 'var(--tng-ink-2)', marginTop: 16 }}>R$</span>
-                        <span className="ps-price-amt">
-                          {p.price_brl.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                    {p.price_brl === 0 ? (
+                      /* ── FREE ──────────────────────────────────── */
+                      <>
+                        <span style={{
+                          fontFamily: 'var(--tng-font-mono)', fontSize: 11,
+                          textTransform: 'uppercase', letterSpacing: '.16em', color: 'var(--tng-ink-3)',
+                        }}>
+                          Acesso gratuito
                         </span>
-                      </div>
+
+                        <div style={{ margin: '14px 0 2px' }}>
+                          <span className="ps-price-amt" style={{ fontSize: 72 }}>Grátis</span>
+                        </div>
+
+                        <p style={{ fontSize: 14.5, color: 'var(--tng-ink-2)', margin: '0 0 4px', fontWeight: 500 }}>
+                          Acesso imediato e sem custo
+                        </p>
+                        <p style={{ fontSize: 13, color: 'var(--tng-ink-3)', margin: '0 0 26px' }}>
+                          Sem cartão. Comece agora mesmo.
+                        </p>
+
+                        <button
+                          className="ps-cta-btn access"
+                          onClick={() => handleEnrollFree(p.id)}
+                          disabled={isLoading}
+                          style={{ border: '1.5px solid var(--tng-ink)', boxShadow: isLoading ? 'none' : '4px 4px 0 var(--tng-ink)', opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
+                        >
+                          {isLoading ? 'Aguarde...' : 'Começar agora →'}
+                        </button>
+
+                        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--tng-ink-2)' }}>
+                            <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="var(--tng-success)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                              <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13z" /><path d="M8 4.5V8l2.5 1.5" />
+                            </svg>
+                            Liberação na hora, direto no Companion
+                          </div>
+                        </div>
+                      </>
                     ) : (
-                      <div style={{ fontSize: 16, color: 'var(--tng-ink-3)', margin: '14px 0 2px' }}>Consulte</div>
+                      /* ── PAID ───────────────────────────────────── */
+                      <>
+                        <span style={{
+                          fontFamily: 'var(--tng-font-mono)', fontSize: 11,
+                          textTransform: 'uppercase', letterSpacing: '.16em', color: 'var(--tng-ink-3)',
+                        }}>
+                          Pagamento único
+                        </span>
+
+                        {p.price_brl != null ? (
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 5, margin: '14px 0 2px' }}>
+                            <span style={{ fontSize: 26, fontWeight: 700, color: 'var(--tng-ink-2)', marginTop: 16 }}>R$</span>
+                            <span className="ps-price-amt">
+                              {p.price_brl.toLocaleString('pt-BR', { minimumFractionDigits: 0 })}
+                            </span>
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: 16, color: 'var(--tng-ink-3)', margin: '14px 0 2px' }}>Consulte</div>
+                        )}
+
+                        <p style={{ fontSize: 14.5, color: 'var(--tng-ink-2)', margin: '0 0 4px', fontWeight: 500 }}>
+                          Acesso imediato e vitalício
+                        </p>
+                        <p style={{ fontSize: 13, color: 'var(--tng-ink-3)', margin: '0 0 26px' }}>
+                          Sem mensalidade. Pague uma vez, use sempre.
+                        </p>
+
+                        <button
+                          className="ps-cta-btn buy"
+                          onClick={() => handleBuy(p.id)}
+                          disabled={isLoading}
+                          style={{ border: '1.5px solid var(--tng-ink)', boxShadow: isLoading ? 'none' : '4px 4px 0 var(--tng-ink)', opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
+                        >
+                          {isLoading ? 'Aguarde...' : 'Comprar agora →'}
+                        </button>
+
+                        <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--tng-ink-2)' }}>
+                            <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="var(--tng-success)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                              <path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z" /><path d="M5.5 8l1.7 1.7L11 6" />
+                            </svg>
+                            Garantia incondicional de 7 dias
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--tng-ink-2)' }}>
+                            <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="var(--tng-success)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                              <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13z" /><path d="M8 4.5V8l2.5 1.5" />
+                            </svg>
+                            Liberação na hora, direto no Companion
+                          </div>
+                        </div>
+                      </>
                     )}
-
-                    <p style={{ fontSize: 14.5, color: 'var(--tng-ink-2)', margin: '0 0 4px', fontWeight: 500 }}>
-                      Acesso imediato e vitalício
-                    </p>
-                    <p style={{ fontSize: 13, color: 'var(--tng-ink-3)', margin: '0 0 26px' }}>
-                      Sem mensalidade. Pague uma vez, use sempre.
-                    </p>
-
-                    <button
-                      className="ps-cta-btn buy"
-                      onClick={() => handleBuy(p.id)}
-                      disabled={isLoading}
-                      style={{ border: '1.5px solid var(--tng-ink)', boxShadow: isLoading ? 'none' : '4px 4px 0 var(--tng-ink)', opacity: isLoading ? 0.7 : 1, cursor: isLoading ? 'not-allowed' : 'pointer' }}
-                    >
-                      {isLoading ? 'Aguarde...' : 'Comprar agora →'}
-                    </button>
-
-                    <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--tng-ink-2)' }}>
-                        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="var(--tng-success)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                          <path d="M8 1.5l5.5 2v4c0 3.5-2.4 6-5.5 7-3.1-1-5.5-3.5-5.5-7v-4z" /><path d="M5.5 8l1.7 1.7L11 6" />
-                        </svg>
-                        Garantia incondicional de 7 dias
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13.5, color: 'var(--tng-ink-2)' }}>
-                        <svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="var(--tng-success)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                          <path d="M8 1.5a6.5 6.5 0 100 13 6.5 6.5 0 000-13z" /><path d="M8 4.5V8l2.5 1.5" />
-                        </svg>
-                        Liberação na hora, direto no Companion
-                      </div>
-                    </div>
                   </div>
                 )}
 

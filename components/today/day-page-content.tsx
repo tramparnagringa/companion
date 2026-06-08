@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { TodayCards } from '@/components/today/today-cards'
+import { LogoMark } from '@/components/ui/logo-mark'
 import { DayNotes } from '@/components/today/day-notes'
 import { DAYS, WEEK_THEMES, getCurrentDay, getStreak } from '@/lib/days'
 import type { DayDefinition, CardType } from '@/lib/days'
@@ -105,7 +106,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
 
           const base = { type, title: c.title, preview: rawContent }
 
-          const chatBase = `/chat?day=${dayNumber}${slug ? `&slug=${slug}` : ''}`
+          const chatBase = slug ? `/${slug}/days/${dayNumber}/chat` : `/chat?day=${dayNumber}`
 
           if (type === 'action') {
             // Pipe-separated descriptions become checklist items
@@ -116,7 +117,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
               ...base,
               content: isChecklist ? [] : (rawContent ? [{ body: rawContent }] : []),
               checklist: isChecklist ? items.map((label: string) => ({ label })) : undefined,
-              cta: { label: 'Executar com IA', href: `${chatBase}&prompt=${encodeURIComponent(prompt)}` },
+              cta: { label: 'Executar com IA', href: `${chatBase}?prompt=${encodeURIComponent(prompt)}` },
             }
           }
 
@@ -125,7 +126,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
             return {
               ...base,
               content: rawContent ? [{ body: rawContent }] : [],
-              cta: { label: 'Iniciar sessão com mentor IA', href: `${chatBase}&prompt=${encodeURIComponent(prompt)}` },
+              cta: { label: 'Iniciar sessão com mentor IA', href: `${chatBase}?prompt=${encodeURIComponent(prompt)}` },
             }
           }
 
@@ -134,7 +135,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
             return {
               ...base,
               content: rawContent ? [{ body: rawContent }] : [],
-              cta: { label: 'Reflexão guiada', href: `/chat?day=${dayNumber}&mode=reflect${slug ? `&slug=${slug}` : ''}&prompt=${encodeURIComponent(prompt)}` },
+              cta: { label: 'Reflexão guiada', href: slug ? `/${slug}/days/${dayNumber}/chat?mode=reflect&prompt=${encodeURIComponent(prompt)}` : `/chat?day=${dayNumber}&mode=reflect&prompt=${encodeURIComponent(prompt)}` },
             }
           }
 
@@ -143,7 +144,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
           return {
             ...base,
             content: rawContent ? [{ body: rawContent }] : [],
-            cta: { label: 'Aprofundar com IA', href: `${chatBase}&prompt=${encodeURIComponent(prompt)}` },
+            cta: { label: 'Aprofundar com IA', href: `${chatBase}?prompt=${encodeURIComponent(prompt)}` },
           }
         }),
       }
@@ -383,8 +384,7 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
               {/* Left: dark panel */}
               <div className="phero-left">
                 <div className="phero-left-wm" aria-hidden>✌️</div>
-                <img src="/logo-mark.svg" alt="" width={36} height={36}
-                  style={{ marginBottom: 22, opacity: 0.9, position: 'relative', zIndex: 1 }} />
+                <LogoMark size={36} style={{ marginBottom: 22, opacity: 0.9, position: 'relative', zIndex: 1 }} />
                 <div className="phero-eyebrow">
                   <span className="phero-dot" />
                   Seu programa

@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useTransition, useCallback, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { DayCard } from './day-card'
 import { completeDayActivity } from '@/app/actions/day-activity'
 import { isCardComplete } from '@/lib/days'
@@ -20,6 +21,7 @@ interface TodayCardsProps {
 }
 
 export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, enrollmentId, nextDay, weekThemes = {}, slug }: TodayCardsProps) {
+  const router = useRouter()
   const [cardComplete, setCardComplete] = useState<Record<number, boolean>>(() =>
     Object.fromEntries(dayDef.cards.map((card, i) => [i, isCardComplete(card, i, savedState)]))
   )
@@ -33,6 +35,7 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, en
       setDayDone(true)
       startTransition(async () => {
         await completeDayActivity(dayNumber, enrollmentId)
+        router.refresh()
       })
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -49,6 +52,7 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, en
       setDayDone(true)
       startTransition(async () => {
         await completeDayActivity(dayNumber, enrollmentId)
+        router.refresh()
       })
     }
   }, [allDone]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -68,7 +72,7 @@ export function TodayCards({ dayDef, dayNumber, savedState, alreadyCompleted, en
             dayNumber={dayNumber}
             enrollmentId={enrollmentId}
             savedState={savedState}
-            defaultOpen={i === 0 && !alreadyCompleted}
+            defaultOpen={!alreadyCompleted}
             onComplete={handleCardComplete}
             slug={slug}
           />

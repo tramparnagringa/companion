@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   let supabase: Awaited<ReturnType<typeof createServerClient>>
   let userId: string
   let messages: Anthropic.MessageParam[]
-  let mode: 'task' | 'mentor' | 'cv'
+  let mode: 'task' | 'mentor' | 'cv' | 'reflect'
   let dayNumber: number | undefined
   let sessionId: string | undefined
   let slug: string | undefined
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
     const body = await req.json()
     messages   = body.messages
-    mode       = body.mode === 'mentor' ? 'mentor' : body.mode === 'cv' ? 'cv' : 'task'
+    mode       = body.mode === 'mentor' ? 'mentor' : body.mode === 'cv' ? 'cv' : body.mode === 'reflect' ? 'reflect' : 'task'
     dayNumber  = body.dayNumber
     slug       = body.slug as string | undefined
     sessionId  = body.sessionId as string | undefined
@@ -157,7 +157,7 @@ export async function POST(req: Request) {
           ]
         }
 
-        const interactionType = mode === 'mentor' ? 'mentor' : mode === 'cv' ? 'cv_rewrite' : dayNumber !== undefined ? 'day_activity' : 'chat'
+        const interactionType = mode === 'mentor' ? 'mentor' : mode === 'cv' ? 'cv_rewrite' : mode === 'reflect' ? 'reflect' : dayNumber !== undefined ? 'day_activity' : 'chat'
         await recordTokenUsage(
           userId!,
           totalInputTokens + totalOutputTokens,

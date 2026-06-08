@@ -3,6 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { getEnrollmentBySlug } from '@/lib/programs'
 import { ProgramStore } from '@/components/program-store'
+import { LogoMark } from '@/components/ui/logo-mark'
 
 export async function generateMetadata({
   params,
@@ -121,7 +122,7 @@ export default async function ProgramLandingPage({
       <header className="pgm-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo-mark.svg" width={38} height={38} alt="TNG" style={{ flexShrink: 0 }} />
+          <LogoMark size={38} />
           <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1 }}>
             <span style={{
               fontFamily: 'var(--tng-font-display)', fontWeight: 700, fontSize: 16,

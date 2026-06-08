@@ -61,7 +61,7 @@ interface ChatWindowProps {
   initialPrompt?: string
   dayNumber?: number
   slug?: string
-  mode?: 'task' | 'mentor'
+  mode?: 'task' | 'mentor' | 'reflect'
   loadSessionId?: string | null
   onSessionCreated?: (sessionId: string) => void
   userName?: string
@@ -430,6 +430,23 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
                           table:  ({ children }) => <table>{children}</table>,
                           th:     ({ children }) => <th>{children}</th>,
                           td:     ({ children }) => <td>{children}</td>,
+                          a: ({ href, children }) => (
+                            <a
+                              href={href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                fontWeight: 700,
+                                color: 'var(--tng-purple-700)',
+                                textDecoration: 'underline',
+                                textDecorationColor: 'var(--tng-coral)',
+                                textDecorationThickness: '2px',
+                                textUnderlineOffset: '3px',
+                              }}
+                            >
+                              {children}
+                            </a>
+                          ),
                         }}
                       >
                         {msg.content || (loading && i === messages.length - 1 ? '…' : '')}
