@@ -72,12 +72,12 @@ export function ProgramsPanel({ enrollments, activeSlug, recommendedProgram, onC
   return (
     <>
       <style>{`
-        /* ── scrim (transparent — just catches outside clicks) ─── */
+        /* ── scrim ─────────────────────────────────────────────── */
         .sbc-scrim {
           position: fixed; inset: 0; z-index: 49;
         }
 
-        /* ── balloon ───────────────────────────────────────────── */
+        /* ── balloon (desktop) ─────────────────────────────────── */
         .sbc-panel {
           position: fixed;
           left: calc(var(--sidebar-w, 252px) + 10px);
@@ -95,6 +95,25 @@ export function ProgramsPanel({ enrollments, activeSlug, recommendedProgram, onC
         @keyframes sbc-pop {
           from { opacity: 0; transform: translateY(-46%) scale(.95); }
           to   { opacity: 1; transform: translateY(-46%) scale(1); }
+        }
+
+        /* ── bottom sheet (mobile) ─────────────────────────────── */
+        @media (max-width: 768px) {
+          .sbc-scrim {
+            background: rgba(20,20,20,0.45);
+          }
+          .sbc-panel {
+            left: 0; top: auto; bottom: 0;
+            width: 100%; max-height: 85dvh;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -4px 32px rgba(0,0,0,0.18);
+            transform: none;
+            animation: sbc-slide-up .22s cubic-bezier(.2,1.2,.4,1) both;
+          }
+          @keyframes sbc-slide-up {
+            from { opacity: 0; transform: translateY(40px); }
+            to   { opacity: 1; transform: translateY(0); }
+          }
         }
 
         /* ── panel header ──────────────────────────────────────── */

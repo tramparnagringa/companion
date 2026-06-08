@@ -16,7 +16,6 @@ export function SidebarPanel({ children, isOpen, className }: SidebarPanelProps)
     <nav
       className={`sidebar-nav${isOpen ? ' sidebar-open' : ''}${className ? ` ${className}` : ''}`}
       style={{
-        width: 'var(--sidebar-w)',
         background: 'var(--tng-paper)',
         borderRight: '1px solid var(--tng-rule)',
         display: 'flex',

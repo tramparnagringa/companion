@@ -236,7 +236,10 @@ export function Sidebar({
 
         /* mobile close */
         .sidebar-close-btn { display: none; }
-        @media (max-width: 768px) { .sidebar-close-btn { display: flex !important; } }
+        @media (max-width: 768px) {
+          .sidebar-close-btn { display: flex !important; }
+          .sb-mobile-hide { display: none; }
+        }
       `}</style>
 
       <SidebarPanel isOpen={isOpen}>
@@ -370,9 +373,9 @@ export function Sidebar({
           {/* ── CARREIRA ─────────────────────────────── */}
           <div className="sb-group">
             <div className="sb-gl">Carreira</div>
-            <NavItem href="/cv"     label="CV+ Editor"    icon={<IcoCv />}    isActive={isActiveHref('/cv')}    onClick={onClose} />
-            <NavItem href="/board"  label="Job Board"     icon={<IcoBoard />} isActive={isActiveHref('/board')} onClick={onClose} />
-            <NavItem href="/plans"  label="Planos de ação" icon={<IcoPlans />} isActive={isActiveHref('/plans')} onClick={onClose} />
+            <span className="sb-mobile-hide"><NavItem href="/cv"    label="CV+ Editor" icon={<IcoCv />}    isActive={isActiveHref('/cv')}    onClick={onClose} /></span>
+            <span className="sb-mobile-hide"><NavItem href="/board" label="Job Board"  icon={<IcoBoard />} isActive={isActiveHref('/board')} onClick={onClose} /></span>
+            <NavItem href="/plans" label="Planos de ação" icon={<IcoPlans />} isActive={isActiveHref('/plans')} onClick={onClose} />
           </div>
         </div>
 

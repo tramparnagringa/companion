@@ -14,7 +14,7 @@ export async function POST(req: Request) {
 
   const { data: program } = await service
     .from('programs')
-    .select('id, name, slug, abacatepay_product_id, store_visible')
+    .select('id, name, slug, abacatepay_product_id, store_visible, price_brl')
     .eq('id', program_id)
     .eq('store_visible', true)
     .single()
@@ -53,10 +53,14 @@ export async function POST(req: Request) {
   const productId = program.abacatepay_product_id!
   const userId = user.id
 
+  const priceBrl = Number(program.price_brl ?? 0)
+  const acceptCard = priceBrl > 300
+  const maxInstallments = acceptCard ? Math.min(12, Math.floor(priceBrl / 10)) : undefined
+
   async function createCheckout(cId: string | null) {
     return abacatepay.checkouts.create({
-      methods: ['PIX', 'CARD'] as any,
-      card: { maxInstallments: 12 } as any,
+      methods: (acceptCard ? ['PIX', 'CARD'] : ['PIX']) as any,
+      ...(acceptCard ? { card: { maxInstallments } as any } : {}),
       items: [{ id: productId, quantity: 1 }],
       ...(cId ? { customerId: cId } : {}),
       externalId: `${userId}|${programId}|${Date.now()}`,
@@ -84,7 +88,7 @@ export async function POST(req: Request) {
 
   if (!checkoutResult.url) {
     console.error('[checkout] AbacatePay result:', JSON.stringify(checkoutResult))
-    return Response.json({ error: 'checkout_creation_failed' }, { status: 500 })
+    return Response.json({ error: 'checkout_creation_failed', detail: checkoutResult }, { status: 500 })
   }
 
   return Response.json({ url: checkoutResult.url })

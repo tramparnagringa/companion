@@ -34,7 +34,6 @@ function formatSessionDate(iso: string): string {
 }
 
 const PANEL_WIDTH_DESKTOP = 'min(30vw, 380px)'
-const PANEL_WIDTH_MOBILE  = 'min(95vw, 420px)'
 
 export function SessionsPanel({ isOpen, onToggle, activeSessionId, onSelect, onNew, refreshTrigger }: SessionsPanelProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([])
@@ -57,7 +56,6 @@ export function SessionsPanel({ isOpen, onToggle, activeSessionId, onSelect, onN
 
   function handleSelect(session: ChatSession) {
     onSelect(session)
-    if (isMobile) onToggle()
   }
 
   function handleNew() {
@@ -67,7 +65,7 @@ export function SessionsPanel({ isOpen, onToggle, activeSessionId, onSelect, onN
 
   const panelContent = (
     <div style={{
-      width: isMobile ? PANEL_WIDTH_MOBILE : PANEL_WIDTH_DESKTOP,
+      width: isMobile ? '100vw' : PANEL_WIDTH_DESKTOP,
       height: '100%',
       display: 'flex', flexDirection: 'column',
       background: 'var(--bg)',
