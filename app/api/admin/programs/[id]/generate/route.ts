@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import Anthropic from '@anthropic-ai/sdk'
 import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 // Detect the current phase based on what's already in the program.
 // outline  — no days yet, or only stub days (name = "Dia N")
@@ -278,8 +279,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   const anthropic = new Anthropic()
   const stream = anthropic.messages.stream({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 8000,
+    model: AI_MODELS.DEFAULT,
+    max_tokens: MAX_TOKENS.PROGRAM_GENERATE,
     system: systemPrompt,
     messages: filteredMessages,
   })
@@ -380,8 +381,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
                       description:     day.description ?? null,
                       ai_instructions: day.ai_instructions ?? null,
                       cards:           normalizeCards(day.cards ?? []),
-                      ai_model:        day.ai_model ?? 'claude-sonnet-4-6',
-                      ai_max_tokens:   day.ai_max_tokens ?? 1024,
+                      ai_model:        day.ai_model ?? AI_MODELS.DEFAULT,
+                      ai_max_tokens:   day.ai_max_tokens ?? MAX_TOKENS.PROGRAM_DAY,
                     })
                     if (insertErr) {
                       console.error(`[generate] INSERT error day ${day.day_number}:`, insertErr)
@@ -410,7 +411,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const finalMsg = await stream.finalMessage()
       const input  = finalMsg.usage.input_tokens
       const output = finalMsg.usage.output_tokens
-      await recordTokenUsage(callerId, input + output, 'program_generation', { program_id: id }, 'claude-sonnet-4-6', input, output)
+      await recordTokenUsage(callerId, input + output, 'program_generation', { program_id: id }, AI_MODELS.DEFAULT, input, output)
     }
   })
 

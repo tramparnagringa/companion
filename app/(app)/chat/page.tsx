@@ -69,7 +69,7 @@ export default function ChatPage() {
         }
         setJobLoading(false)
       })
-  }, [jobId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [jobId, urlPrompt])
 
   const handleSessionCreated = useCallback((id: string) => {
     setActiveSessionId(id)

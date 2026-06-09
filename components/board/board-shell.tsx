@@ -56,8 +56,8 @@ export function BoardShell({ initialJobs, defaultRole }: {
           </button>
         }
       />
-      <div style={{ flex: 1, overflow: 'hidden', padding: '28px 56px 0' }}>
-        <div style={{ overflowX: 'auto', overflowY: 'hidden', paddingBottom: 28, height: '100%' }}>
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto', overflowY: 'hidden', height: '100%' }}>
           <KanbanBoard
             initialJobs={jobs}
             defaultRole={defaultRole}

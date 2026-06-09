@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 const anthropic = new Anthropic()
 
@@ -106,8 +107,8 @@ REGRAS:
     async start(controller) {
       try {
         const stream = anthropic.messages.stream({
-          model: 'claude-sonnet-4-6',
-          max_tokens: 1024,
+          model: AI_MODELS.DEFAULT,
+          max_tokens: MAX_TOKENS.MENTOR_CHAT,
           system,
           messages,
         })
@@ -124,7 +125,7 @@ REGRAS:
         const finalMsg = await stream.finalMessage()
         const input  = finalMsg.usage.input_tokens
         const output = finalMsg.usage.output_tokens
-        await recordTokenUsage(user.id, input + output, 'mentor_chat', {}, 'claude-sonnet-4-6', input, output)
+        await recordTokenUsage(user.id, input + output, 'mentor_chat', {}, AI_MODELS.DEFAULT, input, output)
       } catch (err) {
         console.error('[mentor/chat] stream error', err)
         controller.enqueue(encoder.encode('data: [DONE]\n\n'))

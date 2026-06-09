@@ -26,18 +26,6 @@ export async function POST(req: Request) {
 
   const service = createServiceClient()
 
-  // Idempotency — skip if this checkout was already processed
-  const { data: existing } = await service
-    .from('token_balance')
-    .select('id')
-    .eq('source_payment_id', checkout.id)
-    .maybeSingle()
-
-  if (existing) {
-    console.log('[webhook] already processed, skipping:', checkout.id)
-    return Response.json({ ok: true })
-  }
-
   const { data: program, error: programErr } = await service
     .from('programs')
     .select('id, slug, token_allocation, validity_days')
@@ -51,7 +39,8 @@ export async function POST(req: Request) {
 
   const expiresAt = new Date(Date.now() + (program.validity_days ?? 365) * 86_400_000)
 
-  const { error: tokenErr } = await service.from('token_balance').insert({
+  // Idempotent insert — duplicate source_payment_id is silently ignored
+  const { error: tokenErr } = await service.from('token_balance').upsert({
     user_id: userId,
     tokens_total: program.token_allocation ?? 2_000_000,
     tokens_used: 0,
@@ -59,9 +48,15 @@ export async function POST(req: Request) {
     product_type: program.slug,
     source_payment_id: checkout.id,
     is_active: true,
-  })
+  }, { onConflict: 'source_payment_id', ignoreDuplicates: true })
+
   if (tokenErr) {
-    console.error('[webhook] token_balance insert error:', tokenErr)
+    // 23505 = unique_violation means already processed — return success
+    if ((tokenErr as { code?: string }).code === '23505') {
+      console.log('[webhook] already processed, skipping:', checkout.id)
+      return Response.json({ ok: true })
+    }
+    console.error('[webhook] token_balance upsert error:', tokenErr)
     return Response.json({ error: 'token_insert_failed', detail: tokenErr.message }, { status: 500 })
   }
 

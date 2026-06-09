@@ -51,9 +51,12 @@ export async function executeToolCall(
 
     case 'add_keywords': {
       const keywords = input.keywords as string[]
+      if (!Array.isArray(keywords) || keywords.length === 0) return { error: 'keywords must be a non-empty array' }
+      if (keywords.length > 100) return { error: 'too many keywords in one call (max 100)' }
       const sourceJobId = input.source_job_id as string | undefined
 
       for (const word of keywords) {
+        if (typeof word !== 'string' || !word.trim() || word.length > 200) continue
         const { data: existing } = await supabase
           .from('keywords')
           .select('id, frequency')

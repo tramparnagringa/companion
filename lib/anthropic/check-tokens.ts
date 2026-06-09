@@ -33,7 +33,7 @@ export async function recordTokenUsage(
 ) {
   const supabase = createServiceClient()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (supabase.rpc as any)('consume_tokens', {
+  const { error } = await (supabase.rpc as any)('consume_tokens', {
     p_user_id: userId,
     p_tokens: tokensConsumed,
     p_interaction_type: interactionType,
@@ -42,4 +42,7 @@ export async function recordTokenUsage(
     p_input_tokens: inputTokens ?? null,
     p_output_tokens: outputTokens ?? null,
   })
+  if (error) {
+    console.error('[recordTokenUsage] RPC error:', { userId, tokensConsumed, interactionType, error })
+  }
 }

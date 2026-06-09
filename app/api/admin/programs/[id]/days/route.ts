@@ -1,5 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 async function assertAdmin() {
   const supabase = await createServerClient()
@@ -38,8 +39,8 @@ export async function PUT(
       name:            body.name,
       description:     body.description ?? null,
       ai_instructions: body.ai_instructions ?? null,
-      ai_model:        body.ai_model ?? 'claude-sonnet-4-6',
-      ai_max_tokens:   body.ai_max_tokens ?? 1024,
+      ai_model:        body.ai_model ?? AI_MODELS.DEFAULT,
+      ai_max_tokens:   body.ai_max_tokens ?? MAX_TOKENS.PROGRAM_DAY,
       cards:           body.cards ?? [],
       updated_at:      new Date().toISOString(),
     })

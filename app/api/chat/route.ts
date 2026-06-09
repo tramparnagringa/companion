@@ -5,6 +5,7 @@ import { buildSystemPrompt, type JobContext, type RecentContext } from '@/lib/an
 import { ALL_TOOLS } from '@/lib/anthropic/tools'
 import { executeToolCall } from '@/lib/anthropic/tool-executor'
 import { getActiveEnrollment, getDayForUser, getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 export async function POST(req: Request) {
   let supabase: Awaited<ReturnType<typeof createServerClient>>
@@ -74,8 +75,8 @@ export async function POST(req: Request) {
       : null
 
   const systemPrompt = buildSystemPrompt(mode!, dayNumber, candidateProfile, programDay?.ai_instructions, jobContext, recentContext)
-  const dayModel     = 'claude-haiku-4-5-20251001'
-  const dayMaxTokens = mode === 'cv' ? 2048 : 1200
+  const dayModel     = AI_MODELS.CHAT_DAY
+  const dayMaxTokens = mode === 'cv' ? MAX_TOKENS.CHAT_CV : MAX_TOKENS.CHAT_STANDARD
 
   const anthropic = new Anthropic()
   const encoder   = new TextEncoder()

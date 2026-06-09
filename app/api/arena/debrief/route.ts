@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { checkTokenBalance, recordTokenUsage } from '@/lib/anthropic/check-tokens'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 interface TranscriptMessage {
   role: 'interviewer' | 'candidate'
@@ -101,14 +102,12 @@ ${formattedTranscript}
 
 Evaluate this interview and return the JSON debrief.`
 
-  const MODEL      = 'claude-sonnet-4-6'
-  const MAX_TOKENS = 4096
   const anthropic  = new Anthropic()
 
   try {
     const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: MAX_TOKENS,
+      model: AI_MODELS.DEFAULT,
+      max_tokens: MAX_TOKENS.ARENA_DEBRIEF,
       system: DEBRIEF_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
     })
@@ -130,7 +129,7 @@ Evaluate this interview and return the JSON debrief.`
     }
 
     const totalTokens = response.usage.input_tokens + response.usage.output_tokens
-    await recordTokenUsage(userId, totalTokens, 'arena_debrief', { round, mode }, MODEL, response.usage.input_tokens, response.usage.output_tokens)
+    await recordTokenUsage(userId, totalTokens, 'arena_debrief', { round, mode }, AI_MODELS.DEFAULT, response.usage.input_tokens, response.usage.output_tokens)
 
     return Response.json(debrief)
   } catch (err) {

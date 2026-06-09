@@ -1,4 +1,5 @@
 import type { Database } from '@/types/database'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 type CandidateProfile = Database['public']['Tables']['candidate_profiles']['Row']
 
@@ -52,12 +53,9 @@ function buildRecentContextBlock(ctx: RecentContext): string {
   return lines.join('\n')
 }
 
-const SONNET = 'claude-sonnet-4-6'
-const HAIKU  = 'claude-haiku-4-5-20251001'
-
-const DEFAULT_TASK_CONFIG = { model: HAIKU,  max_tokens: 1200 }
-const MENTOR_CONFIG       = { model: HAIKU,  max_tokens: 1000 }
-const CV_CONFIG           = { model: SONNET, max_tokens: 2048 }
+const DEFAULT_TASK_CONFIG = { model: AI_MODELS.CHAT_DAY, max_tokens: MAX_TOKENS.CHAT_STANDARD }
+const MENTOR_CONFIG       = { model: AI_MODELS.CHAT_DAY, max_tokens: 1000 }
+const CV_CONFIG           = { model: AI_MODELS.DEFAULT,  max_tokens: MAX_TOKENS.CHAT_CV }
 
 export function getDayModelConfig(mode: 'task' | 'mentor' | 'cv' | 'reflect') {
   if (mode === 'mentor')  return MENTOR_CONFIG

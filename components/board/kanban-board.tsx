@@ -534,7 +534,7 @@ export function KanbanBoard({ initialJobs, defaultRole, addingToColumn, onSetAdd
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
     >
-      <div style={{ display: 'flex', gap: 20, minWidth: 'max-content', height: '100%' }}>
+      <div style={{ display: 'flex', gap: 20, minWidth: 'max-content', height: '100%', padding: '28px 36px 0'}}>
         {columns}
       </div>
 

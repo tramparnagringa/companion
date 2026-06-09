@@ -1,6 +1,7 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { anthropic } from '@/lib/anthropic/client'
 import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 import type { Json } from '@/types/database'
 
 export async function POST(req: Request) {
@@ -34,8 +35,8 @@ export async function POST(req: Request) {
 
   // Use web_search to get real company info, then synthesize prep
   const response = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 2048,
+    model: AI_MODELS.DEFAULT,
+    max_tokens: MAX_TOKENS.INTERVIEW_PREP,
     tools: [{
       type: 'web_search_20250305' as never,
       name: 'web_search',
@@ -94,7 +95,7 @@ Then respond ONLY with a valid JSON object (no markdown, no explanation):
     response.usage.input_tokens + response.usage.output_tokens,
     'interview_prep',
     { job_id: jobId },
-    'claude-sonnet-4-6',
+    AI_MODELS.DEFAULT,
     response.usage.input_tokens,
     response.usage.output_tokens,
   )

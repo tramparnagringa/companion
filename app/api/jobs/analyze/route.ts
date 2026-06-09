@@ -2,6 +2,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { anthropic } from '@/lib/anthropic/client'
 import { updateJob } from '@/app/actions/jobs'
 import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 export async function POST(req: Request) {
   const supabase = await createServerClient()
@@ -29,8 +30,8 @@ Candidate profile:
 `.trim() : 'Candidate profile not yet filled.'
 
   const message = await anthropic.messages.create({
-    model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
+    model: AI_MODELS.DEFAULT,
+    max_tokens: MAX_TOKENS.JOB_ANALYSIS,
     system: `You are an international tech recruiter analyzing job fit for a Brazilian candidate.
 Respond ONLY with a valid JSON object, no markdown, no explanation.
 IMPORTANT: The "analysis_notes" field must be written in Brazilian Portuguese (pt-BR).
@@ -86,7 +87,7 @@ Analyze fit and respond with this exact JSON:
     message.usage.input_tokens + message.usage.output_tokens,
     'job_analysis',
     { job_id: jobId },
-    'claude-sonnet-4-6',
+    AI_MODELS.DEFAULT,
     message.usage.input_tokens,
     message.usage.output_tokens,
   )

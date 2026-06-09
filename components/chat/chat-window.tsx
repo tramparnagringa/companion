@@ -136,10 +136,13 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
       })
   }, [loadSessionId])
 
+  const initialPromptRef = useRef(initialPrompt)
   useEffect(() => {
-    if (initialPrompt && !didAutoSend.current) {
+    // One-shot: auto-send on mount only. Uses a ref so we don't re-trigger
+    // if the parent re-renders before the first message is sent.
+    if (initialPromptRef.current && !didAutoSend.current) {
       didAutoSend.current = true
-      send(initialPrompt)
+      send(initialPromptRef.current)
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 

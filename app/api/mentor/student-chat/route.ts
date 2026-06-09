@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
 import { recordTokenUsage } from '@/lib/anthropic/check-tokens'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 // ── Tool definitions ─────────────────────────────────────────────────────────
@@ -336,8 +337,8 @@ export async function POST(req: Request) {
         // Agentic loop — continues until no more tool calls
         while (true) {
           const response = await anthropic.messages.create({
-            model: 'claude-sonnet-4-6',
-            max_tokens: 2048,
+            model: AI_MODELS.DEFAULT,
+            max_tokens: MAX_TOKENS.MENTOR_STUDENT,
             system: systemPrompt,
             tools: MENTOR_TOOLS,
             messages: currentMessages,
@@ -388,7 +389,7 @@ export async function POST(req: Request) {
           totalInputTokens + totalOutputTokens,
           'mentor_student_chat',
           { student_user_id: userId },
-          'claude-sonnet-4-6',
+          AI_MODELS.DEFAULT,
           totalInputTokens,
           totalOutputTokens,
         )

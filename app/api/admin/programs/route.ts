@@ -1,5 +1,6 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { createServiceClient } from '@/lib/supabase/service'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 async function assertAdmin() {
   const supabase = await createServerClient()
@@ -47,14 +48,18 @@ export async function POST(req: Request) {
     total_days: number
   }
 
-  if (!name || !total_days) {
+  if (!name?.trim() || !total_days) {
     return Response.json({ error: 'missing_fields' }, { status: 400 })
+  }
+  if (total_days < 1 || total_days > 365) {
+    return Response.json({ error: 'total_days must be between 1 and 365' }, { status: 400 })
   }
 
   const service = createServiceClient()
-  const slug = name
+  let slug = name
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
     .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+  if (!slug) slug = `program-${Date.now()}`
 
   const { data, error } = await service.from('programs').insert({
     slug,
@@ -77,8 +82,8 @@ export async function POST(req: Request) {
     description:  null,
     cards:        [],
     ai_instructions: null,
-    ai_model:     'claude-sonnet-4-6',
-    ai_max_tokens: 1024,
+    ai_model:     AI_MODELS.DEFAULT,
+    ai_max_tokens: MAX_TOKENS.PROGRAM_DAY,
   }))
 
   await service.from('program_days').insert(days)

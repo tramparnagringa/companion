@@ -1,6 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { checkTokenBalance, recordTokenUsage } from '@/lib/anthropic/check-tokens'
+import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 type Round = 'HR Screening' | 'Behavioral' | 'Technical' | 'Offer Negotiation'
 type Mode = 'guided' | 'pit'
@@ -137,8 +138,8 @@ export async function POST(req: Request) {
   const systemPrompt = buildArenaSystemPrompt(round, mode, profile)
   const anthropic    = new Anthropic()
   const encoder      = new TextEncoder()
-  const MODEL        = 'claude-sonnet-4-6'
-  const MAX_TOKENS   = 512
+  const MODEL        = AI_MODELS.DEFAULT
+  const SESSION_MAX  = MAX_TOKENS.ARENA_SESSION
 
   let cancelled = false
 
@@ -151,7 +152,7 @@ export async function POST(req: Request) {
       try {
         const stream = anthropic.messages.stream({
           model: MODEL,
-          max_tokens: MAX_TOKENS,
+          max_tokens: SESSION_MAX,
           system: [{ type: 'text', text: systemPrompt, cache_control: { type: 'ephemeral' } }],
           messages,
         })
