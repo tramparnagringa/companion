@@ -439,6 +439,43 @@ export async function executeToolCall(
       return error ? { ok: false, error: error.message } : { ok: true }
     }
 
+    case 'show_ici_scores': {
+      const { data, error } = await supabase
+        .from('candidate_profiles')
+        .select('ici_scores')
+        .eq('user_id', userId)
+        .single()
+      if (error && error.code !== 'PGRST116') console.error('[tool:show_ici_scores]', error)
+      const scores = (data as any)?.ici_scores
+      if (!scores) {
+        return { message: 'No ICI scores yet. Complete the Diagnóstico program to calculate your score.' }
+      }
+      return { ici_scores: scores }
+    }
+
+    case 'save_ici_scores': {
+      const scores = {
+        overall:       input.overall       as number,
+        verdict:       input.verdict       as string,
+        subtitle:      input.subtitle      as string,
+        gap_dimension: input.gap_dimension as string,
+        gap_message:   input.gap_message   as string,
+        dimensions:    input.dimensions    as Record<string, number>,
+        generated_at:  new Date().toISOString(),
+      }
+      const { error } = await supabase
+        .from('candidate_profiles')
+        .upsert(
+          { user_id: userId, ici_scores: scores as any, updated_at: new Date().toISOString() } as any,
+          { onConflict: 'user_id' }
+        )
+      if (error) {
+        console.error('[tool:save_ici_scores]', error)
+        return { error: error.message }
+      }
+      return { ici_scores: scores }
+    }
+
     default:
       return { error: `Unknown tool: ${block.name}` }
   }

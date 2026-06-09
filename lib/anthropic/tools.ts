@@ -198,6 +198,48 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
     },
   },
 
+  // ── ICI ──
+  {
+    name: 'show_ici_scores',
+    description: `Displays the candidate's ICI (Índice de Competitividade Internacional) card visually in the chat.
+Call this when:
+- The user asks about their ICI, competitiveness score, or international readiness
+- You want to anchor feedback or advice to their current position before diving in
+- The user says "qual é meu ICI?", "como estou no mercado?", "quero ver meu resultado"
+If no scores exist yet, the tool returns a message — tell the user to complete the Diagnóstico program.`,
+    input_schema: { type: 'object', properties: {}, required: [] },
+  },
+
+  {
+    name: 'save_ici_scores',
+    description: 'Saves the Índice de Competitividade Internacional (ICI) calculated by the diagnostic program. Call this once at the end of the diagnostic session with all dimension scores.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        overall:       { type: 'number', description: 'Weighted average score (0–10)' },
+        verdict:       { type: 'string', description: 'e.g. "Abaixo da média" | "Na média" | "Acima da média" | "Destaque"' },
+        subtitle:      { type: 'string', description: 'Short sentence summarising the candidate\'s position' },
+        gap_dimension: { type: 'string', description: 'Display name of the lowest-scoring dimension' },
+        gap_message:   { type: 'string', description: 'One sentence explaining the main gap and what to do about it' },
+        dimensions: {
+          type: 'object',
+          properties: {
+            ingles_profissional:        { type: 'number', description: '0–10' },
+            senioridade_especializacao: { type: 'number', description: '0–10' },
+            posicionamento_mercado:     { type: 'number', description: '0–10' },
+            exposicao_internacional:    { type: 'number', description: '0–10' },
+            prontidao_processo:         { type: 'number', description: '0–10' },
+          },
+          required: [
+            'ingles_profissional', 'senioridade_especializacao',
+            'posicionamento_mercado', 'exposicao_internacional', 'prontidao_processo',
+          ],
+        },
+      },
+      required: ['overall', 'verdict', 'subtitle', 'gap_dimension', 'gap_message', 'dimensions'],
+    },
+  },
+
   // ── ANALYTICS ──
   {
     name: 'get_application_stats',

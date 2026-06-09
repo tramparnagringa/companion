@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { getStreak } from '@/lib/days'
+import { ICICard, type ICIScores } from '@/components/ici-card'
 
 export const metadata: Metadata = { title: 'Dossier' }
 
@@ -135,6 +136,13 @@ export default async function ProfilePage() {
             </div>
           </div>
         ) : (<>
+
+          {/* ── ICI Card (if available) ─────────────────────── */}
+          {(candidate as any).ici_scores && (
+            <div className="dossier-band" style={{ paddingTop: 40, paddingBottom: 0 }}>
+              <ICICard scores={(candidate as any).ici_scores as ICIScores} />
+            </div>
+          )}
 
           {/* ── BAND 1 · HERO ───────────────────────────────── */}
           <Band first>

@@ -9,6 +9,7 @@ import {
   BookmarkCheck, CalendarDays, CalendarCheck,
   Hash, Briefcase, Link2, Star, BarChart2, Pencil, Sparkles,
 } from 'lucide-react'
+import { ChatWidgetRenderer, widgetIsFullWidth, type ChatWidget } from '@/components/chat/chat-widget-renderer'
 
 type ToolMeta = { icon: React.ReactNode; label: string; color: string; type: 'read' | 'write' }
 
@@ -37,6 +38,9 @@ const TOOL_META: Record<string, ToolMeta> = {
   update_cv_section:     { icon: <FilePen size={9} />,        label: 'CV atualizado',           color: '#2D6CDF', type: 'write' },
   // --- keywords (teal)
   add_keywords:          { icon: <Hash size={9} />,           label: 'Keywords adicionadas',    color: '#0E8A8A', type: 'write' },
+  // --- ici (lime)
+  show_ici_scores:       { icon: <BarChart2 size={9} />,      label: 'ICI exibido',             color: '#6A9A00', type: 'read'  },
+  save_ici_scores:       { icon: <BarChart2 size={9} />,      label: 'ICI calculado',           color: '#6A9A00', type: 'write' },
   // --- meta (gray)
   set_chat_title:        { icon: <Pencil size={9} />,         label: 'Título definido',         color: '#6E665B', type: 'write' },
 }
@@ -45,6 +49,7 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   toolCalls?: string[]
+  widget?: ChatWidget
   timestamp?: string   // ISO string, set at send time
 }
 
@@ -86,8 +91,6 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
   const [input, setInput]         = useState('')
   const [loading, setLoading]     = useState(false)
   const [sessionId, setSessionId] = useState<string | null>(null)
-  const [dayCompleted, setDayCompleted] = useState(false)
-  const [planSaved, setPlanSaved] = useState<{ title: string } | null>(null)
 
   const messagesEndRef     = useRef<HTMLDivElement>(null)
   const scrollContainerRef = useRef<HTMLDivElement>(null)
@@ -120,8 +123,6 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
     if (!loadSessionId) {
       setMessages([])
       setSessionId(null)
-      setDayCompleted(false)
-      setPlanSaved(null)
       didAutoSend.current = false
       return
     }
@@ -216,7 +217,7 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
       // Each tool_result that is followed by more text creates a new bubble.
       // `segments` tracks the separate text blocks; `newSegmentPending` is set
       // true when a tool fires so the next text delta opens a fresh message.
-      let segments: Array<{ content: string; toolCalls: string[] }> = [{ content: '', toolCalls: [] }]
+      let segments: Array<{ content: string; toolCalls: string[]; widget?: ChatWidget }> = [{ content: '', toolCalls: [] }]
       let newSegmentPending = false
       setMessages(prev => [...prev, { role: 'assistant', content: '' }])
 
@@ -257,15 +258,32 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
             if (event.type === 'tool_result') {
               segments[segments.length - 1].toolCalls.push(event.tool)
               newSegmentPending = true
-              if (event.tool === 'save_day_output') setDayCompleted(true)
+              if (event.tool === 'save_day_output') {
+                segments[segments.length - 1].widget = {
+                  type: 'day_completed',
+                  data: { dayNumber: dayNumber ?? 0, slug },
+                }
+              }
               if (event.tool === 'save_action_note') {
-                setPlanSaved({ title: event.title ?? 'Plano de ação' })
+                segments[segments.length - 1].widget = {
+                  type: 'plan_saved',
+                  data: { title: event.title ?? 'Plano de ação' },
+                }
+                router.refresh()
+              }
+              if (event.widget) {
+                segments[segments.length - 1].widget = event.widget as ChatWidget
                 router.refresh()
               }
               setMessages(prev => {
                 const updated = [...prev]
                 const cur = segments[segments.length - 1]
-                updated[updated.length - 1] = { role: 'assistant', content: cur.content, toolCalls: [...cur.toolCalls] }
+                updated[updated.length - 1] = {
+                  role: 'assistant',
+                  content: cur.content,
+                  toolCalls: [...cur.toolCalls],
+                  widget: cur.widget,
+                }
                 return updated
               })
             }
@@ -285,6 +303,7 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
         role: 'assistant' as const,
         content: seg.content,
         toolCalls: seg.toolCalls,
+        widget: seg.widget,
         timestamp: i === segments.length - 1 ? new Date().toISOString() : undefined,
       }))
       const finalMessages: Message[] = [...updatedMessages, ...segmentMessages]
@@ -367,7 +386,11 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
               const prevRole = messages[i - 1]?.role
               const sameAsPrev = prevRole === msg.role
               return (
-              <div key={i} className={msg.role === 'user' ? 'chat-msg-user' : 'chat-msg-ai'}>
+              <div
+                key={i}
+                className={msg.role === 'user' ? 'chat-msg-user' : 'chat-msg-ai'}
+                style={msg.widget && widgetIsFullWidth(msg.widget) ? { maxWidth: '100%', width: '100%' } : undefined}
+              >
 
                 {msg.role === 'assistant' && (!sameAsPrev || (msg.toolCalls && msg.toolCalls.length > 0)) && (
                   <div className="chat-msg-ai-label">
@@ -456,6 +479,9 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
                       </ReactMarkdown>
                       </div>
                     </div>
+                    {/* Inline widget — rendered as part of the message stream */}
+                    {msg.widget && <ChatWidgetRenderer widget={msg.widget} />}
+
                     {formatTime(msg.timestamp) && (
                       <div style={{
                         fontSize: 10, color: 'var(--tng-mute)',
@@ -488,42 +514,6 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
 
             <div ref={messagesEndRef} />
           </div>
-
-          {/* Day completion notification */}
-          {dayCompleted && dayNumber && slug && (
-            <div className="chat-notify" style={{ background: '#F2FAD5', border: '1px solid #B4DD3A' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 16, color: '#5E7A0F' }}>✓</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: '#5E7A0F' }}>Sessão concluída</div>
-                  <div style={{ fontSize: 11, color: 'var(--tng-ink-3)', marginTop: 2 }}>
-                    Volte ao dia para marcar as atividades como concluídas
-                  </div>
-                </div>
-              </div>
-              <a href={`/${slug}/days/${dayNumber}`} className="chat-notify-link"
-                style={{ background: '#5E7A0F', color: '#F2FAD5' }}>
-                Ir para o Dia {dayNumber} →
-              </a>
-            </div>
-          )}
-
-          {/* Plan saved notification */}
-          {planSaved && (
-            <div className="chat-notify" style={{ background: 'var(--tng-purple-100)', border: '1px solid var(--tng-purple-300)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                <span style={{ fontSize: 16, color: 'var(--tng-purple-700)' }}>◈</span>
-                <div>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--tng-purple-700)' }}>{planSaved.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--tng-ink-3)', marginTop: 2 }}>Plano salvo — acesse na sua lista de planos</div>
-                </div>
-              </div>
-              <a href="/plans" className="chat-notify-link"
-                style={{ background: 'var(--tng-purple-700)', color: 'white' }}>
-                Ver planos →
-              </a>
-            </div>
-          )}
 
           {/* Input */}
           <div className="chat-composer">

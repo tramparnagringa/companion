@@ -140,6 +140,13 @@ export async function POST(req: Request) {
               if (toolBlock.name === 'save_action_note' && result && typeof result === 'object') {
                 extra.title = (result as Record<string, unknown>).title ?? null
               }
+              if (toolBlock.name === 'save_ici_scores') {
+                extra.widget = { type: 'ici_scores', data: toolBlock.input }
+              }
+              if (toolBlock.name === 'show_ici_scores') {
+                const scores = (result as Record<string, unknown>)?.ici_scores
+                if (scores) extra.widget = { type: 'ici_scores', data: scores }
+              }
               controller.enqueue(
                 encoder.encode(`data: ${JSON.stringify({ type: 'tool_result', tool: toolBlock.name, ...extra })}\n\n`)
               )
