@@ -22,7 +22,7 @@ function ICIScoresWidget({ scores }: { scores: ICIScores }) {
   return (
     <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
       <ICICard scores={scores} showShare />
-      <a
+      {/* <a
         href="/profile"
         style={{
           display: 'inline-flex',
@@ -37,7 +37,7 @@ function ICIScoresWidget({ scores }: { scores: ICIScores }) {
         }}
       >
         Ver no Dossier →
-      </a>
+      </a> */}
     </div>
   )
 }
