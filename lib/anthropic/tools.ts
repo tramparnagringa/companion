@@ -17,13 +17,13 @@ export const ALL_TOOLS: Anthropic.Tool[] = [
           type: 'object',
           description: 'Fields to update. Use only these exact keys:',
           properties: {
-            full_name:                      { type: 'string',  description: 'Candidate full name — extract from CV header or LinkedIn on Day 1' },
-            extracted_profile:              { type: 'string',  description: 'Raw CV analysis output from Day 1' },
+            full_name:                      { type: 'string',  description: 'Candidate full name — extract from CV header or LinkedIn' },
+            extracted_profile:              { type: 'string',  description: 'Raw CV analysis output' },
             target_role:                    { type: 'string',  description: 'e.g. "Senior Product Manager"' },
             seniority:                      { type: 'string',  description: 'e.g. "Senior", "Mid", "Lead"' },
             years_experience:               { type: 'number',  description: 'Total years of professional experience' },
             tech_stack:                     { type: 'array',   items: { type: 'string' }, description: 'e.g. ["React","Node.js","AWS"]' },
-            target_regions:                 { type: 'array',   items: { type: 'string' }, description: 'e.g. ["EU","UK","Canada"]' },
+            target_regions:                 { type: 'array',   items: { type: 'string' }, description: 'e.g. ["EU","UK","Canada","Worldwide"]' },
             work_preference:                { type: 'string',  enum: ['remote','relocation','both'] },
             target_sectors:                 { type: 'array',   items: { type: 'string' }, description: 'e.g. ["Fintech","SaaS","HealthTech"]' },
             value_proposition:              { type: 'string',  description: 'Core value proposition statement' },
@@ -218,7 +218,8 @@ If no scores exist yet, the tool returns a message — tell the user to complete
       properties: {
         overall:       { type: 'number', description: 'Weighted average score (0–10)' },
         verdict:       { type: 'string', description: 'e.g. "Abaixo da média" | "Na média" | "Acima da média" | "Destaque"' },
-        subtitle:      { type: 'string', description: 'Short sentence summarising the candidate\'s position' },
+        subtitle:      { type: 'string', description: `A sharp, honest hook that captures the candidate's core strength and new direction — positioning them as confident and intentionally expanding (into new market, scale, or role level). Focus on expertise + direction, not weakness. Must be shareable even if currently employed. Examples: "20 anos de código, agora escalando internacionalmente" or "Expertise sênior em frontend, expandindo horizontes globais". 8–14 words. HARD LIMIT: 45 characters for maximum visual impact (font scales down for longer text, degrading the card design).` },
+        tagline:       { type: 'string', description: `Complements subtitle by signaling readiness for the next level. Written for third-party viewers (recruiters, hiring managers, peers). Should hint at concrete capability or ambition without sounding like escape. Aspirational, grounded, shareable. Examples: "Senior frontend architect ready for European-scale challenges" or "Pronto pra próximo nível: liderança técnica + mercado global". 6–10 words. HARD LIMIT: 80 characters.` },
         gap_dimension: { type: 'string', description: 'Display name of the lowest-scoring dimension' },
         gap_message:   { type: 'string', description: 'One sentence explaining the main gap and what to do about it' },
         dimensions: {
@@ -236,7 +237,7 @@ If no scores exist yet, the tool returns a message — tell the user to complete
           ],
         },
       },
-      required: ['overall', 'verdict', 'subtitle', 'gap_dimension', 'gap_message', 'dimensions'],
+      required: ['overall', 'verdict', 'subtitle', 'tagline', 'gap_dimension', 'gap_message', 'dimensions'],
     },
   },
 

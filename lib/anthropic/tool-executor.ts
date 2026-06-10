@@ -458,6 +458,7 @@ export async function executeToolCall(
         overall:       input.overall       as number,
         verdict:       input.verdict       as string,
         subtitle:      input.subtitle      as string,
+        tagline:       input.tagline       as string | undefined,
         gap_dimension: input.gap_dimension as string,
         gap_message:   input.gap_message   as string,
         dimensions:    input.dimensions    as Record<string, number>,

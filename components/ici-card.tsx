@@ -1,3 +1,27 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+
+const SHARE_SCHEMES = ['lime', 'coral', 'purple', 'dark', 'paper', 'white', 'deep'] as const
+
+// Background + text color for each scheme used in the score banner
+const SCHEME_STYLES: Record<typeof SHARE_SCHEMES[number], { bg: string; text: string; muted: string; isDark: boolean }> = {
+  lime:   { bg: '#C9F23D', text: '#2A002E', muted: 'rgba(42,0,46,0.55)',    isDark: false },
+  coral:  { bg: '#FF6B35', text: '#FBF8F1', muted: 'rgba(251,248,241,0.7)', isDark: true  },
+  purple: { bg: '#430049', text: '#FBF8F1', muted: 'rgba(251,248,241,0.55)', isDark: true  },
+  dark:   { bg: '#0e0e10', text: '#FBF8F1', muted: 'rgba(251,248,241,0.45)', isDark: true  },
+  paper:  { bg: '#FBF8F1', text: '#2A002E', muted: 'rgba(42,0,46,0.50)',    isDark: false },
+  white:  { bg: '#ffffff', text: '#2A002E', muted: 'rgba(42,0,46,0.45)',    isDark: false },
+  deep:   { bg: '#2A002E', text: '#FBF8F1', muted: 'rgba(251,248,241,0.45)', isDark: true  },
+}
+
+function verdictEmoji(overall: number): string {
+  if (overall >= 8.0) return '🚀'
+  if (overall >= 6.5) return '✈️'
+  if (overall >= 5.0) return '⚡'
+  return '🌱'
+}
+
 export interface ICIDimensions {
   ingles_profissional: number
   senioridade_especializacao: number
@@ -10,6 +34,7 @@ export interface ICIScores {
   overall: number
   verdict: string
   subtitle: string
+  tagline?: string
   gap_dimension: string
   gap_message: string
   dimensions: ICIDimensions
@@ -19,6 +44,7 @@ export interface ICIScores {
 interface ICICardProps {
   scores: ICIScores
   compact?: boolean
+  showShare?: boolean
 }
 
 const DIMENSION_LABELS: Record<keyof ICIDimensions, string> = {
@@ -34,8 +60,20 @@ function getGapKey(dims: ICIDimensions): keyof ICIDimensions {
     .reduce((min, cur) => cur[1] < min[1] ? cur : min)[0]
 }
 
-export function ICICard({ scores, compact = false }: ICICardProps) {
-  const gapKey = getGapKey(scores.dimensions)
+export function ICICard({ scores, compact = false, showShare = true }: ICICardProps) {
+  const gapKey  = getGapKey(scores.dimensions)
+  const [colorKey] = useState(
+    () => SHARE_SCHEMES[Math.floor(Math.random() * SHARE_SCHEMES.length)]
+  )
+  const scheme     = SCHEME_STYLES[colorKey]
+  const previewSrc = `/api/og/ici?s=${encodeURIComponent(JSON.stringify(scores))}&c=${colorKey}`
+  const [isMobile, setIsMobile] = useState(false)
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 600)
+    check()
+    window.addEventListener('resize', check)
+    return () => window.removeEventListener('resize', check)
+  }, [])
 
   if (compact) {
     return (
@@ -106,6 +144,7 @@ export function ICICard({ scores, compact = false }: ICICardProps) {
       padding: '24px 28px',
       boxShadow: '0 2px 10px rgba(20,20,20,0.07)',
       width: '100%',
+      maxWidth: 600,
     }}>
 
       {/* Eyebrow */}
@@ -134,79 +173,118 @@ export function ICICard({ scores, compact = false }: ICICardProps) {
         Índice de Competitividade Internacional
       </div>
 
-      {/* Score banner */}
+      {/* Score banner — two halves when showShare, full-width otherwise */}
       <div style={{
-        background: 'var(--tng-purple-700)',
-        borderRadius: 12,
-        padding: '20px 24px',
         display: 'flex',
-        alignItems: 'center',
-        gap: 20,
-        marginBottom: 24,
-        position: 'relative',
+        flexDirection: isMobile ? 'column' : 'row',
+        borderRadius: 12,
         overflow: 'hidden',
+        marginBottom: 24,
+        minHeight: isMobile ? 'auto' : 160,
+        border: '1px solid #18181b',
+        boxShadow: '4px 4px 0 #18181b',
       }}>
-        {/* Score number */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1, flexShrink: 0 }}>
-          <span style={{
-            fontFamily: 'var(--tng-font-display)',
-            fontSize: 72,
-            fontWeight: 800,
-            color: 'var(--tng-cream)',
-            lineHeight: 1,
-            letterSpacing: '-0.04em',
-          }}>
-            {scores.overall.toFixed(1)}
-          </span>
-          <span style={{
-            fontFamily: 'var(--tng-font-display)',
-            fontSize: 22,
-            fontWeight: 700,
-            color: 'rgba(245,239,226,0.45)',
-            lineHeight: 1,
-            paddingBottom: 7,
-          }}>
-            /10
-          </span>
-        </div>
-
-        {/* Verdict + subtitle */}
-        <div style={{ flex: 1 }}>
-          <div style={{
-            fontFamily: 'var(--tng-font-mono)',
-            fontSize: 12,
-            fontWeight: 700,
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase',
-            color: 'var(--tng-lime)',
-            marginBottom: 6,
-          }}>
-            {scores.verdict}
-          </div>
-          <div style={{
-            fontFamily: 'var(--tng-font-mono)',
-            fontSize: 13,
-            color: 'rgba(183,177,160,0.85)',
-            lineHeight: 1.45,
-          }}>
-            {scores.subtitle}
-          </div>
-        </div>
-
-        {/* Watermark */}
+        {/* Left: score + verdict */}
         <div style={{
-          position: 'absolute',
-          right: -10,
-          top: -8,
-          fontSize: 100,
-          lineHeight: 1,
-          opacity: 0.07,
-          transform: 'rotate(-5deg)',
-          pointerEvents: 'none',
-          userSelect: 'none',
+          width: showShare && !isMobile ? '55%' : '100%',
+          background: scheme.bg,
+          padding: '24px 28px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          gap: 8,
+          position: 'relative',
+          overflow: 'hidden',
         }}>
-          ✌️
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2 }}>
+            <span style={{
+              fontFamily: 'var(--tng-font-display)',
+              fontSize: isMobile ? 72 : 98, fontWeight: 600,
+              color: scheme.text,
+              lineHeight: 1, letterSpacing: '-0.04em',
+            }}>
+              {scores.overall.toFixed(1)}
+            </span>
+            <span style={{
+              fontFamily: 'var(--tng-font-display)',
+              fontSize: 22, fontWeight: 700,
+              color: scheme.muted,
+              lineHeight: 1, paddingBottom: 7,
+            }}>
+              /10
+            </span>
+          </div>
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '5px 10px',
+            borderRadius: 999,
+            background: scheme.isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)',
+            border: `0.5px solid ${scheme.isDark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.12)'}`,
+            alignSelf: 'flex-start',
+          }}>
+            <span style={{ fontSize: 13, lineHeight: 1 }}>{verdictEmoji(scores.overall)}</span>
+            <span style={{
+              fontFamily: 'var(--tng-font-mono)',
+              fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.12em', textTransform: 'uppercase',
+              color: scheme.text,
+            }}>
+              {scores.verdict}
+            </span>
+          </div>
+          {/* Watermark */}
+          {!showShare && (
+            <div style={{
+              position: 'absolute', right: -10, top: -8,
+              fontSize: 100, lineHeight: 1, opacity: 0.07,
+              transform: 'rotate(-5deg)',
+              pointerEvents: 'none', userSelect: 'none',
+            }}>✌️</div>
+          )}
         </div>
+
+        {/* Right: OG card preview + download */}
+        {showShare && (
+          <div style={{
+            width: isMobile ? '100%' : '45%',
+            flexShrink: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            background: scheme.bg,
+            overflow: 'hidden',
+          }}>
+            <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
+              <img
+                src={previewSrc}
+                alt="Prévia do card compartilhável"
+                style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+              />
+            </div>
+            <a
+              href={previewSrc}
+              download={`ici-${scores.overall.toFixed(1)}.png`}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                padding: '8px 12px',
+                borderTop: `0.5px solid ${scheme.muted}`,
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: '0.1em',
+                textTransform: 'uppercase',
+                color: scheme.muted,
+                textDecoration: 'none',
+                flexShrink: 0,
+              }}
+            >
+              Compartilhar
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Dimensions */}
@@ -276,7 +354,6 @@ export function ICICard({ scores, compact = false }: ICICardProps) {
           alignItems: 'flex-start',
           background: 'rgba(255,107,53,0.04)',
         }}>
-          {/* Coral circle icon */}
           <div style={{
             width: 28,
             height: 28,
@@ -304,6 +381,7 @@ export function ICICard({ scores, compact = false }: ICICardProps) {
           </div>
         </div>
       )}
+
     </div>
   )
 }

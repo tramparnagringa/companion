@@ -1,3 +1,5 @@
+'use client'
+
 import { ICICard, type ICIScores } from '@/components/ici-card'
 
 // Discriminated union — add a new member for each future widget type.
@@ -16,31 +18,35 @@ interface Props {
   widget: ChatWidget
 }
 
+function ICIScoresWidget({ scores }: { scores: ICIScores }) {
+  return (
+    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <ICICard scores={scores} showShare />
+      <a
+        href="/profile"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          marginTop: 2,
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--tng-purple-700)',
+          textDecoration: 'underline',
+          textDecorationColor: 'var(--tng-lime)',
+          textUnderlineOffset: '3px',
+        }}
+      >
+        Ver no Dossier →
+      </a>
+    </div>
+  )
+}
+
 export function ChatWidgetRenderer({ widget }: Props) {
   switch (widget.type) {
 
     case 'ici_scores':
-      return (
-        <div style={{ marginTop: 12 }}>
-          <ICICard scores={widget.data} />
-          <a
-            href="/profile"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              marginTop: 10,
-              fontSize: 12,
-              fontWeight: 600,
-              color: 'var(--tng-purple-700)',
-              textDecoration: 'underline',
-              textDecorationColor: 'var(--tng-lime)',
-              textUnderlineOffset: '3px',
-            }}
-          >
-            Ver no Dossier →
-          </a>
-        </div>
-      )
+      return <ICIScoresWidget scores={widget.data} />
 
     case 'day_completed':
       return (

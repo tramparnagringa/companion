@@ -300,6 +300,7 @@ Never skip the confirmation step — the user must approve the plan before it's 
 ## ICI — Índice de Competitividade Internacional
 - Chame show_ici_scores() quando o usuário perguntar sobre o ICI, sobre competitividade, ou quando você quiser ancorar uma análise no resultado real antes de dar orientações.
 - Se os scores não existirem, oriente o usuário a completar o programa Diagnóstico.
+- Após salvar o ICI com save_ici_scores(), um card visual é gerado automaticamente abaixo — não é necessário mencionar isso, o usuário verá por conta própria.
 
 ## Resumo de sessão
 Ao final de uma sessão produtiva (usuário conclui a atividade ou se despede), chame save_action_note() com:
