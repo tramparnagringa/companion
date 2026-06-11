@@ -11,12 +11,12 @@ export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
   const isAuthRoute    = path.startsWith('/login') || path.startsWith('/pending') || path.startsWith('/programs')
   const isAdminRoute   = path.startsWith('/admin')
-  const isApiWebhook   = path.startsWith('/api/webhooks')
+  const isApiRoute     = path.startsWith('/api/')
   const isSignout      = path.startsWith('/auth/signout')
   const isCallback     = path.startsWith('/auth/callback')
 
-  // Skip auth for webhooks, callback, and signout
-  if (isApiWebhook || isCallback || isSignout) return response
+  // Skip auth for all API routes, callback, and signout — API routes do their own auth
+  if (isApiRoute || isCallback || isSignout) return response
 
   // Redirect unauthenticated users to login
   if (!user && !isAuthRoute) {
