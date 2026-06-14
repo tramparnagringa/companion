@@ -47,9 +47,9 @@ export default function ProgramsPage() {
   }
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '8px 11px', borderRadius: 'var(--rsm)',
+    width: '100%', padding: '9px 12px', borderRadius: 'var(--rsm)',
     background: 'var(--bg3)', border: '0.5px solid var(--border2)',
-    color: 'var(--text)', fontSize: 13, outline: 'none', boxSizing: 'border-box',
+    color: 'var(--text)', fontSize: 14, outline: 'none', boxSizing: 'border-box',
   }
 
   return (
@@ -57,15 +57,15 @@ export default function ProgramsPage() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Programas</h1>
-          <p style={{ fontSize: 13, color: 'var(--text3)', margin: '4px 0 0' }}>
+          <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Programas</h1>
+          <p style={{ fontSize: 14, color: 'var(--text3)', margin: '4px 0 0' }}>
             Bootcamps, sprints e programas extras da plataforma
           </p>
         </div>
         <button
           onClick={() => setShowForm(f => !f)}
           style={{
-            padding: '8px 16px', borderRadius: 'var(--rsm)', fontSize: 13, fontWeight: 500,
+            padding: '9px 18px', borderRadius: 'var(--rsm)', fontSize: 14, fontWeight: 500,
             background: showForm ? 'var(--bg3)' : 'var(--purple-dim)',
             color: showForm ? 'var(--text3)' : 'var(--purple)',
             border: `0.5px solid ${showForm ? 'var(--border)' : 'var(--purple)'}`,
@@ -82,13 +82,13 @@ export default function ProgramsPage() {
           background: 'var(--bg2)', border: '0.5px solid var(--border)',
           borderRadius: 'var(--r)', padding: '20px 22px', marginBottom: 24,
         }}>
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)', marginBottom: 16 }}>
+          <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 16 }}>
             Novo programa
           </div>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 12 }}>
               <div>
-                <label style={{ fontSize: 11, color: 'var(--text3)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.06em' }}>
                   Nome
                 </label>
                 <input
@@ -98,7 +98,7 @@ export default function ProgramsPage() {
                 />
               </div>
               <div>
-                <label style={{ fontSize: 11, color: 'var(--text3)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+                <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.06em' }}>
                   Total de dias
                 </label>
                 <input
@@ -109,7 +109,7 @@ export default function ProgramsPage() {
               </div>
             </div>
             <div>
-              <label style={{ fontSize: 11, color: 'var(--text3)', display: 'block', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '.06em' }}>
+              <label style={{ fontSize: 12, color: 'var(--text3)', display: 'block', marginBottom: 5, textTransform: 'uppercase', letterSpacing: '.06em' }}>
                 Descrição (opcional)
               </label>
               <input
@@ -122,7 +122,7 @@ export default function ProgramsPage() {
               <button
                 type="submit" disabled={creating || !name}
                 style={{
-                  padding: '8px 18px', borderRadius: 'var(--rsm)', fontSize: 13, fontWeight: 500,
+                  padding: '9px 18px', borderRadius: 'var(--rsm)', fontSize: 14, fontWeight: 500,
                   background: creating || !name ? 'var(--bg4)' : 'var(--purple-dim)',
                   color: creating || !name ? 'var(--text4)' : 'var(--purple)',
                   border: `0.5px solid ${creating || !name ? 'var(--border)' : 'var(--purple)'}`,
@@ -166,9 +166,9 @@ export default function ProgramsPage() {
             >
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                  <span style={{ fontSize: 14, fontWeight: 500, color: 'var(--text)' }}>{p.name}</span>
+                  <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>{p.name}</span>
                   <span style={{
-                    fontSize: 10, fontWeight: 500, padding: '2px 7px', borderRadius: 8,
+                    fontSize: 11, fontWeight: 500, padding: '3px 8px', borderRadius: 8,
                     background: p.is_published ? 'var(--green-dim)' : 'var(--bg4)',
                     color: p.is_published ? 'var(--green)' : 'var(--text4)',
                     textTransform: 'uppercase', letterSpacing: '.06em',
@@ -177,17 +177,17 @@ export default function ProgramsPage() {
                   </span>
                 </div>
                 {p.description && (
-                  <div style={{ fontSize: 12, color: 'var(--text3)' }}>{p.description}</div>
+                  <div style={{ fontSize: 13, color: 'var(--text3)' }}>{p.description}</div>
                 )}
               </div>
               <div style={{ display: 'flex', gap: 20, flexShrink: 0 }}>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)' }}>{p.total_days}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text4)' }}>dias</div>
+                  <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--text)' }}>{p.total_days}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text4)' }}>dias</div>
                 </div>
                 <div style={{ textAlign: 'center' }}>
-                  <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--accent)' }}>{p.enrolled_count}</div>
-                  <div style={{ fontSize: 10, color: 'var(--text4)' }}>ativos</div>
+                  <div style={{ fontSize: 17, fontWeight: 600, color: 'var(--accent)' }}>{p.enrolled_count}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text4)' }}>ativos</div>
                 </div>
               </div>
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ width: 14, height: 14, color: 'var(--text4)', flexShrink: 0 }}>

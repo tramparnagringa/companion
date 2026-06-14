@@ -2077,3 +2077,83 @@ h1, h2, h3, h4, h5, h6 {
 
   .profile-cards { gap: 10px; }
 }
+
+/* Markdown context blocks (admin student profile) */
+.md-context {
+  font-size: 15px;
+  color: var(--text2);
+  line-height: 1.65;
+}
+
+.md-context h2 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  color: var(--text3);
+  margin: 24px 0 10px;
+  padding: 0;
+  border: none;
+}
+
+.md-context h2::after {
+  content: '';
+  flex: 1;
+  height: 0.5px;
+  background: var(--border);
+}
+
+.md-context h2:first-child {
+  margin-top: 0;
+}
+
+.md-context p {
+  margin: 0 0 6px;
+}
+
+.md-context ul,
+.md-context ol {
+  margin: 0 0 8px;
+  padding-left: 16px;
+}
+
+.md-context li {
+  margin-bottom: 4px;
+  line-height: 1.55;
+}
+
+.md-context strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.md-context table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.md-context th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--text4);
+  padding: 5px 10px 5px 0;
+  border-bottom: 0.5px solid var(--border);
+}
+
+.md-context td {
+  padding: 7px 10px 7px 0;
+  color: var(--text2);
+  border-bottom: 0.5px solid var(--border);
+}
+
+.md-context hr {
+  display: none;
+}

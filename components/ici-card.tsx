@@ -44,6 +44,7 @@ export interface ICIScores {
 interface ICICardProps {
   scores: ICIScores
   compact?: boolean
+  mini?: boolean
   showShare?: boolean
 }
 
@@ -60,7 +61,7 @@ function getGapKey(dims: ICIDimensions): keyof ICIDimensions {
     .reduce((min, cur) => cur[1] < min[1] ? cur : min)[0]
 }
 
-export function ICICard({ scores, compact = false, showShare = true }: ICICardProps) {
+export function ICICard({ scores, compact = false, mini = false, showShare = true }: ICICardProps) {
   const gapKey  = getGapKey(scores.dimensions)
   const [colorKey] = useState(
     () => SHARE_SCHEMES[Math.floor(Math.random() * SHARE_SCHEMES.length)]
@@ -74,6 +75,88 @@ export function ICICard({ scores, compact = false, showShare = true }: ICICardPr
     window.addEventListener('resize', check)
     return () => window.removeEventListener('resize', check)
   }, [])
+
+  if (mini) {
+    return (
+      <div style={{
+        background: 'var(--tng-paper)',
+        border: '1px solid var(--tng-rule)',
+        borderRadius: 10,
+        padding: '14px 16px',
+        width: '100%',
+      }}>
+        {/* Eyebrow */}
+        <div style={{
+          fontFamily: 'var(--tng-font-mono)', fontSize: 9, fontWeight: 700,
+          letterSpacing: '0.14em', textTransform: 'uppercase',
+          color: 'var(--tng-ink-3)', marginBottom: 8,
+        }}>
+          ICI · Competitividade Internacional
+        </div>
+
+        {/* Score + verdict */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 2 }}>
+            <span style={{
+              fontFamily: 'var(--tng-font-display)', fontSize: 34, fontWeight: 800,
+              color: 'var(--tng-purple-900)', lineHeight: 1, letterSpacing: '-0.03em',
+            }}>
+              {scores.overall.toFixed(1)}
+            </span>
+            <span style={{
+              fontFamily: 'var(--tng-font-display)', fontSize: 14, fontWeight: 700,
+              color: 'var(--tng-ink-3)', paddingBottom: 3,
+            }}>
+              /10
+            </span>
+          </div>
+          <div>
+            <div style={{
+              fontFamily: 'var(--tng-font-mono)', fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--tng-purple-700)',
+            }}>
+              {verdictEmoji(scores.overall)} {scores.verdict}
+            </div>
+            {scores.subtitle && (
+              <div style={{ fontSize: 11, color: 'var(--tng-ink-3)', marginTop: 2, lineHeight: 1.3 }}>
+                {scores.subtitle}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Dimension bars */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {(Object.entries(DIMENSION_LABELS) as Array<[keyof ICIDimensions, string]>).map(([key, label]) => {
+            const score = scores.dimensions[key]
+            const isGap = key === gapKey
+            return (
+              <div key={key}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <span style={{ fontSize: 10, color: isGap ? 'var(--tng-coral)' : 'var(--tng-ink-2)', fontWeight: isGap ? 600 : 400 }}>
+                    {label}
+                  </span>
+                  <span style={{
+                    fontSize: 10, color: isGap ? 'var(--tng-coral)' : 'var(--tng-purple-700)',
+                    fontFamily: 'var(--tng-font-mono)', fontWeight: 600,
+                  }}>
+                    {score.toFixed(1)}
+                  </span>
+                </div>
+                <div style={{ height: 3, background: 'var(--tng-bone)', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{
+                    width: `${score * 10}%`, height: '100%', borderRadius: 2,
+                    background: isGap ? 'var(--tng-coral)' : 'var(--tng-purple-700)',
+                    transition: 'width 700ms cubic-bezier(.2,.7,.2,1)',
+                  }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
 
   if (compact) {
     return (

@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import { ProgramAIAssistant } from './program-ai-assistant'
 import { MarkdownField } from './markdown-field'
+import { ProgramFunnel, type FunnelData } from './program-funnel'
 
 function detectPhase(days: { ai_instructions?: string | null; cards?: unknown[] }[]): 'outline' | 'week' | 'refine' {
   if (days.length === 0) return 'outline'
@@ -63,7 +64,7 @@ const CARD_TYPE_META = {
   reflect: { label: 'Reflexão', color: 'var(--purple)', dim: 'var(--purple-dim)' },
 }
 
-export function ProgramEditor({ program: initial }: { program: Program }) {
+export function ProgramEditor({ program: initial, funnelData }: { program: Program; funnelData: FunnelData }) {
   const [program, setProgram]       = useState(initial)
   const [editingDay, setEditingDay] = useState<number | null>(null)
   const [dayForm, setDayForm]       = useState<DayForm>({
@@ -258,6 +259,9 @@ export function ProgramEditor({ program: initial }: { program: Program }) {
         {' / '}
         <span style={{ color: 'var(--text3)' }}>{program.name}</span>
       </div>
+
+      {/* Cohort funnel */}
+      <ProgramFunnel data={funnelData} />
 
       {/* Header card */}
       <div style={{

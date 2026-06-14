@@ -23,7 +23,7 @@ async function getStudentData(userId: string): Promise<StudentData | null> {
 
   const [
     profileRes, candidateRes, daysRes, jobsRes,
-    cvRes, balancesRes, usageRes, interviewRes, actionsRes, enrollmentsRes, programsRes,
+    cvRes, balancesRes, usageRes, interviewRes, actionsRes, enrollmentsRes, programsRes, sessionsRes,
   ] = await Promise.all([
     supabase.from('profiles').select('id, full_name, role, created_at').eq('id', userId).single(),
     supabase.from('candidate_profiles').select('*').eq('user_id', userId).single(),
@@ -36,6 +36,7 @@ async function getStudentData(userId: string): Promise<StudentData | null> {
     supabase.from('mentor_actions').select('id, action, metadata, created_at').eq('target_user_id', userId).order('created_at', { ascending: false }),
     supabase.from('user_programs').select('id, status, started_at, completed_at, program:programs(id, name, slug, total_days, description)').eq('user_id', userId).order('started_at'),
     supabase.from('programs').select('id, name, slug, is_published').order('name'),
+    supabase.from('chat_sessions').select('id, title, mode, messages, summary, context_snapshot, summarized_at, created_at, updated_at').eq('user_id', userId).order('updated_at', { ascending: false }).limit(30),
   ])
 
   if (!profileRes.data) return null
@@ -44,7 +45,8 @@ async function getStudentData(userId: string): Promise<StudentData | null> {
 
   return {
     profile:       profileRes.data,
-    candidate:     candidateRes.data ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    candidate:     (candidateRes.data ?? null) as any,
     days:          daysRes.data ?? [],
     jobs:          jobsRes.data ?? [],
     cvVersions:    cvRes.data ?? [],
@@ -58,7 +60,10 @@ async function getStudentData(userId: string): Promise<StudentData | null> {
     mentorActions: actionsRes.data ?? [],
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     enrollments: (enrollmentsRes.data ?? []) as any[],
-    availablePrograms: programsRes.data ?? [],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    availablePrograms: (programsRes.data ?? []) as any[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    chatSessions: (sessionsRes.data ?? []) as any[],
   }
 }
 

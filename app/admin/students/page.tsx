@@ -82,11 +82,11 @@ export default async function AdminStudentsPage() {
       {pending.length > 0 && (
         <div style={{ marginBottom: 32 }}>
           <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h2 style={{ fontSize: 15, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', margin: 0 }}>
               Acesso pendente
             </h2>
             <span style={{
-              fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10,
+              fontSize: 12, fontWeight: 600, padding: '3px 9px', borderRadius: 10,
               background: 'var(--orange-dim)', color: 'var(--orange)',
             }}>
               {pending.length}
@@ -106,32 +106,13 @@ export default async function AdminStudentsPage() {
 
       {/* ── Active students ── */}
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Alunos</h1>
-        <p style={{ fontSize: 13, color: 'var(--text3)', margin: '4px 0 0' }}>
+        <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)', margin: 0 }}>Alunos</h1>
+        <p style={{ fontSize: 14, color: 'var(--text3)', margin: '4px 0 0' }}>
           {students.length} aluno{students.length !== 1 ? 's' : ''} com acesso ativo
         </p>
       </div>
 
-      <div style={{
-        background: 'var(--bg2)', border: '0.5px solid var(--border)',
-        borderRadius: 'var(--r)', overflow: 'hidden',
-      }}>
-        <div className="students-table-desktop" style={{
-          display: 'grid',
-          gridTemplateColumns: '2fr 100px 140px 100px',
-          padding: '10px 16px',
-          borderBottom: '0.5px solid var(--border)',
-          fontSize: 11, color: 'var(--text4)',
-          textTransform: 'uppercase', letterSpacing: '.08em',
-        }}>
-          <span>Aluno</span>
-          <span>Plano</span>
-          <span>Tokens</span>
-          <span>Última atividade</span>
-        </div>
-
-        <StudentsTable students={students} basePath="/admin/students" />
-      </div>
+      <StudentsTable students={students} basePath="/admin/students" />
     </div>
   )
 }

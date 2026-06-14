@@ -28,7 +28,7 @@ export interface Program {
   total_days: number
   week_themes: Record<string, string>
   features: string[]
-  is_published: boolean
+  is_published: boolean | null
 }
 
 export interface UserEnrollment {
@@ -157,7 +157,9 @@ export async function getProgramDays(
   return (data ?? []).map(row => ({
     ...row,
     cards: (row.cards ?? []) as unknown as DayCard[],
-  })) as ProgramDay[]
+    ai_model: row.ai_model ?? 'claude-haiku-4-5-20251001',
+    ai_max_tokens: row.ai_max_tokens ?? 1024,
+  })) as unknown as ProgramDay[]
 }
 
 /**
@@ -180,7 +182,9 @@ export async function getProgramDay(
   return {
     ...data,
     cards: (data.cards ?? []) as unknown as DayCard[],
-  } as ProgramDay
+    ai_model: data.ai_model ?? 'claude-haiku-4-5-20251001',
+    ai_max_tokens: data.ai_max_tokens ?? 1024,
+  } as unknown as ProgramDay
 }
 
 /**
