@@ -33,7 +33,7 @@ export async function POST(req: Request) {
     .maybeSingle()
 
   if (existing?.status === 'active') {
-    return Response.json({ redirect: `/${program.slug}/today` })
+    return Response.json({ redirect: `/${program.slug}/days` })
   }
 
   const sourceId = `free_enrollment_${user.id}_${program.id}`
@@ -88,5 +88,5 @@ export async function POST(req: Request) {
     .eq('id', user.id)
     .eq('role', 'pending')
 
-  return Response.json({ redirect: `/${program.slug}/today` })
+  return Response.json({ redirect: `/${program.slug}/days` })
 }

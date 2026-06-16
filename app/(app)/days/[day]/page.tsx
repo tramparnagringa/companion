@@ -29,8 +29,6 @@ export default async function DayRedirect({
       enrollmentId={enrollment?.id}
       programId={enrollment?.program_id}
       programName={enrollment?.program.name}
-      programDescription={enrollment?.program.description}
-      programFeatures={enrollment?.program.features ?? []}
       programWeekThemes={enrollment?.program.week_themes as Record<string, string> | undefined}
       slug={enrollment?.program.slug}
       programDay={programDay}

@@ -122,7 +122,7 @@ export default async function ProgramsPage() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
             {enrollments.length > 0 && (
-              <a href="/today" className="pgm-back">← Voltar ao app</a>
+              <a href="/days" className="pgm-back">← Voltar ao app</a>
             )}
             <form action="/auth/signout" method="post">
               <button type="submit" style={{

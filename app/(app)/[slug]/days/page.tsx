@@ -5,6 +5,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
+import { LogoMark } from '@/components/ui/logo-mark'
 import { getCurrentDay, getStreak } from '@/lib/days'
 import { getEnrollmentBySlug, getProgramDays } from '@/lib/programs'
 
@@ -51,20 +52,32 @@ export default async function ProgramDaysPage({
   const statusMap           = new Map(allActivities.map(a => [a.day_number, a.status]))
   const streak              = getStreak(allActivities)
 
-  const doneCount = completedDayNumbers.length
-  const weeks     = Array.from({ length: numWeeks }, (_, i) => i + 1)
+  const doneCount    = completedDayNumbers.length
+  const weeks        = Array.from({ length: numWeeks }, (_, i) => i + 1)
+  const currentWeek  = programDays.find(d => d.day_number === currentDay)?.week_number ?? 1
+  const weekChips    = Object.entries(weekThemes)
+    .map(([k, v]) => ({ week: parseInt(k, 10), theme: String(v).trim() }))
+    .filter(c => !isNaN(c.week) && c.theme.length > 0)
+    .sort((a, b) => a.week - b.week)
+  const features: string[] = (enrollment.program as { features?: string[] }).features?.length
+    ? (enrollment.program as { features?: string[] }).features!
+    : [`${totalDays} dias guiados por IA com sessões diárias personalizadas`,
+       'CV otimizado para recrutadores e sistemas ATS internacionais',
+       'LinkedIn que atrai recrutadores 24h por dia',
+       'Networking real com recrutadores das suas empresas-alvo',
+       'Simulação de entrevistas com feedback imediato']
 
   // Breadcrumb matching the day/hoje topbar style
   const breadcrumb = (
     <div className="topbar-crumb">
       <strong>{enrollment.program.name}</strong>
       <span className="sep crumb-detail">/</span>
-      <span className="crumb-detail">Dia {currentDay} de {totalDays}</span>
-      {doneCount > 0 && (
-        <>
-          <span className="sep crumb-detail">/</span>
-          <strong className="crumb-detail">{doneCount} concluído{doneCount !== 1 ? 's' : ''}</strong>
-        </>
+      <span className="crumb-detail">O Programa</span>
+      <span className="sep crumb-detail">/</span>
+      {doneCount >= totalDays ? (
+        <strong className="crumb-detail">Concluído</strong>
+      ) : (
+        <span className="crumb-detail">Dia {currentDay} de {totalDays}</span>
       )}
     </div>
   )
@@ -75,27 +88,46 @@ export default async function ProgramDaysPage({
 
       <div className="prog-wrap">
 
-        {/* ── Program Hero ── */}
-        <div className="prog-hero">
-          <div className="prog-hero-eyebrow">
-            <span className="prog-hero-pill">{totalDays} dias · {numWeeks} semana{numWeeks !== 1 ? 's' : ''}</span>
+        {/* ── Program hero card ── */}
+        <div className="phero-card">
+          <div className="phero-left">
+            <div className="phero-left-wm" aria-hidden>✌️</div>
+            <LogoMark size={32} style={{ marginBottom: 20, opacity: 0.9, position: 'relative', zIndex: 1 }} />
+            <div className="phero-eyebrow">
+              <span className="phero-dot" />
+              Seu programa
+            </div>
+            <div className="phero-name">{enrollment.program.name}</div>
+            {enrollment.program.description && (
+              <div className="phero-desc">{enrollment.program.description}</div>
+            )}
+            {weekChips.length > 0 && (
+              <div className="phero-stepper">
+                {weekChips.map(({ week, theme }) => (
+                  <div key={week} className="phero-step">
+                    <div className={`phero-step-circle${week === currentWeek ? ' ph-active' : ''}`}>{week}</div>
+                    <div className={`phero-step-label${week === currentWeek ? ' ph-active' : ''}`}>{theme}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <h1 className="prog-hero-title">{enrollment.program.name}</h1>
-          {enrollment.program.description && (
-            <p className="prog-hero-desc">{enrollment.program.description}</p>
-          )}
-          <div className="prog-hero-bar-wrap">
-            <div
-              className="prog-hero-bar-fill"
-              style={{ width: `${totalDays > 0 ? Math.round((doneCount / totalDays) * 100) : 0}%` }}
-            />
-          </div>
-          <div className="prog-hero-stats">
-            <span>Dia <strong>{currentDay}</strong> de {totalDays}</span>
-            <span className="prog-hero-sep">·</span>
-            <span><strong>{doneCount}</strong> concluído{doneCount !== 1 ? 's' : ''}</span>
-            <span className="prog-hero-sep">·</span>
-            <span><strong>{totalDays > 0 ? Math.round((doneCount / totalDays) * 100) : 0}%</strong> completo</span>
+          <div className="phero-right">
+            <ul className="phero-features">
+              {features.map((f, i) => (
+                <li key={i} className="phero-feature-item">
+                  <span className="phero-check" aria-hidden>
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" width="10" height="10" style={{ color: 'var(--tng-purple-900)' }}>
+                      <polyline points="2,6.5 5,9.5 10,2.5" />
+                    </svg>
+                  </span>
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <Link href={`/${slug}/days/${currentDay}`} className="phero-cta">
+              {doneCount === 0 ? 'Começar Dia 1 →' : `Continuar — Dia ${currentDay} →`}
+            </Link>
           </div>
         </div>
 

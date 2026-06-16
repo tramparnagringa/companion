@@ -18,6 +18,7 @@ interface SessionsPanelProps {
   onSelect: (session: ChatSession) => void
   onNew: () => void
   refreshTrigger?: number
+  programSlug?: string
 }
 
 function formatSessionDate(iso: string): string {
@@ -35,7 +36,7 @@ function formatSessionDate(iso: string): string {
 
 const PANEL_WIDTH_DESKTOP = 'min(30vw, 380px)'
 
-export function SessionsPanel({ isOpen, onToggle, activeSessionId, onSelect, onNew, refreshTrigger }: SessionsPanelProps) {
+export function SessionsPanel({ isOpen, onToggle, activeSessionId, onSelect, onNew, refreshTrigger, programSlug }: SessionsPanelProps) {
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [loading, setLoading]   = useState(true)
   const [isMobile, setIsMobile] = useState(false)
@@ -48,11 +49,14 @@ export function SessionsPanel({ isOpen, onToggle, activeSessionId, onSelect, onN
   }, [])
 
   useEffect(() => {
-    fetch('/api/chat/sessions')
+    const url = programSlug
+      ? `/api/chat/sessions?program_slug=${encodeURIComponent(programSlug)}`
+      : '/api/chat/sessions'
+    fetch(url)
       .then(r => r.json())
       .then(data => { if (Array.isArray(data)) setSessions(data) })
       .finally(() => setLoading(false))
-  }, [refreshTrigger])
+  }, [refreshTrigger, programSlug])
 
   function handleSelect(session: ChatSession) {
     onSelect(session)

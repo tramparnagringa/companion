@@ -145,7 +145,7 @@ export function MentorSidebar({ user, role = 'mentor', isOpen, onClose }: Mentor
       {/* Back to app */}
       <div style={{ padding: '0 8px 14px' }}>
         <button
-          onClick={() => router.push('/today')}
+          onClick={() => router.push('/days')}
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '7px 8px', borderRadius: 'var(--rsm)',

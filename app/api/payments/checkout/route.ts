@@ -64,7 +64,7 @@ export async function POST(req: Request) {
       items: [{ id: productId, quantity: 1 }],
       ...(cId ? { customerId: cId } : {}),
       externalId: `${userId}|${programId}|${Date.now()}`,
-      completionUrl: `${process.env.NEXT_PUBLIC_APP_URL}/${programSlug}/today`,
+      completionUrl: `${process.env.NEXT_PUBLIC_APP_URL}/${programSlug}/days`,
       returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/programs`,
     }) as any
   }

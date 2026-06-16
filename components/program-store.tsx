@@ -300,7 +300,7 @@ export function ProgramStore({
                       </div>
                     </div>
                     <a
-                      href={`/${enrollment.slug}/today`}
+                      href={`/${enrollment.slug}/days`}
                       className="ps-cta-btn access"
                       style={{ width: '100%', boxSizing: 'border-box', marginTop: 8 }}
                     >

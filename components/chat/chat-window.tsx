@@ -176,9 +176,10 @@ export function ChatWindow({ initialPrompt, dayNumber, slug, mode = 'task', load
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title:      sessionTitle,
+          title:        sessionTitle,
           mode,
-          day_number: dayNumber ?? null,
+          day_number:   dayNumber ?? null,
+          program_slug: slug ?? null,
         }),
       })
       const data = await res.json()

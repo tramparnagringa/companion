@@ -134,7 +134,7 @@ export default async function ProgramLandingPage({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
           {hasAccess && (
-            <a href="/today" className="pgm-back">← Voltar ao app</a>
+            <a href="/days" className="pgm-back">← Voltar ao app</a>
           )}
           {!hasAccess && (
             <a href="/programs" className="pgm-back">← Ver todos os programas</a>

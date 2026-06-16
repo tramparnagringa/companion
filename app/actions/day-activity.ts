@@ -59,6 +59,46 @@ export async function saveCardState(
 }
 
 /**
+ * Marks a day as in_progress when the user opens it (page view).
+ * No-op if already in_progress or done.
+ */
+export async function startDayActivity(
+  dayNumber: number,
+  enrollmentId?: string,
+): Promise<void> {
+  if (!enrollmentId) return
+
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return
+
+  const { data: existing } = await supabase
+    .from('day_activities')
+    .select('id, status')
+    .eq('program_enrollment_id', enrollmentId)
+    .eq('day_number', dayNumber)
+    .maybeSingle()
+
+  if (existing) {
+    if (existing.status === 'pending') {
+      await supabase
+        .from('day_activities')
+        .update({ status: 'in_progress', updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+    }
+  } else {
+    await supabase
+      .from('day_activities')
+      .insert({
+        user_id: user.id,
+        day_number: dayNumber,
+        program_enrollment_id: enrollmentId,
+        status: 'in_progress',
+      })
+  }
+}
+
+/**
  * Marks a day as fully completed.
  */
 export async function completeDayActivity(

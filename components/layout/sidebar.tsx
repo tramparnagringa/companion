@@ -268,28 +268,17 @@ export function Sidebar({
         {/* Scrollable nav area */}
         <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-          {/* ── JORNADA ──────────────────────────────── */}
           <div className="sb-group">
-            <div className="sb-gl">Jornada</div>
-
-            {/* Início */}
-            <NavItem
-              href="/today"
-              label="Início"
-              icon={<IcoHome />}
-              isActive={pathname === '/today'}
-              onClick={onClose}
-            />
 
             {/* Program block — only when enrolled */}
             {activeEnrollment && slug && (
-              <div className="sb-pblock">
+              <>
                 {/* Header: icon + name + switcher */}
-                <div className="sb-pblock-h">
-                  <span className="ic"><IcoLayers /></span>
-                  <div className="pl">
-                    <span className="pk">Programa</span>
-                    <span className="pn" title={activeEnrollment.name}>{activeEnrollment.name}</span>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '4px 12px 8px' }}>
+                  <span style={{ color: 'var(--tng-purple-700)', display: 'inline-flex', marginTop: 18, flexShrink: 0 }}><IcoLayers /></span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <span style={{ display: 'block', fontFamily: 'var(--tng-font-mono)', fontSize: '8.5px', letterSpacing: '0.14em', textTransform: 'uppercase', color: 'var(--tng-purple-700)' }}>Programa</span>
+                    <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 700, color: 'var(--tng-purple-900)', lineHeight: 1.15, marginTop: 1 }} title={activeEnrollment.name}>{activeEnrollment.name}</span>
                   </div>
                   <button
                     className="sbc-switchbtn"
@@ -306,8 +295,8 @@ export function Sidebar({
                   </button>
                 </div>
 
-                {/* Progress + CTA */}
-                <div className="pblk-prog">
+                {/* Progress bar */}
+                <div style={{ padding: '0 12px 8px' }}>
                   <div className="pblk-meta">
                     <span>Dia {currentDay} de {totalDays}</span>
                     <span>{Math.round(progressPct)}%</span>
@@ -315,67 +304,29 @@ export function Sidebar({
                   <div className="pblk-bar">
                     <i style={{ width: `${progressPct}%` }} />
                   </div>
-                  {!isOnProgramPages && (
-                    <Link
-                      href={`/${slug}/today`}
-                      className="pblk-resume"
-                      onClick={onClose}
-                    >
-                      <IcoPlay />
-                      Continuar
-                    </Link>
-                  )}
                 </div>
 
-                {/* Sub-nav items — only when navigating within this program */}
-                {isOnProgramPages && (
-                  <>
-                    <BlockNavItem
-                      href={`/${slug}/today`}
-                      label="Agora"
-                      icon={<IcoSun />}
-                      tail={completedDays >= totalDays ? '✓ Concluído' : `Dia ${currentDay}/${totalDays}`}
-                      isActive={isActiveHref(`/${slug}/today`)}
-                      onClick={onClose}
-                    />
-                    <BlockNavItem
-                      href={`/${slug}/days`}
-                      label="O programa"
-                      icon={<IcoMap />}
-                      isActive={pathname === `/${slug}/days`}
-                      onClick={onClose}
-                    />
-                    {selectedDay && (
-                      <div style={{ paddingLeft: 14, position: 'relative' }}>
-                        <div style={{ position: 'absolute', left: 20, top: 0, bottom: '50%', width: 1, background: 'var(--tng-purple-300)' }} />
-                        <div style={{ position: 'absolute', left: 20, top: '50%', width: 8, height: 1, background: 'var(--tng-purple-300)' }} />
-                        <BlockNavItem
-                          href={`/${slug}/days/${selectedDay}`}
-                          label={`Dia ${selectedDay}/${totalDays}`}
-                          icon={<IcoSun />}
-                          isActive={true}
-                          onClick={onClose}
-                        />
-                      </div>
-                    )}
-                  </>
+                {/* Nav items */}
+                <NavItem
+                  href={`/${slug}/days`}
+                  label="O Programa"
+                  icon={<IcoMap />}
+                  isActive={pathname === `/${slug}/days`}
+                  onClick={onClose}
+                />
+                {selectedDay && (
+                  <NavItem
+                    href={`/${slug}/days/${selectedDay}`}
+                    label={`Dia ${selectedDay}/${totalDays}`}
+                    icon={<IcoSun />}
+                    isActive={true}
+                    onClick={onClose}
+                  />
                 )}
-              </div>
+                <NavItem href={`/${slug}/chat`} label="Mentor IA" icon={<IcoChat />} isActive={isActiveHref(`/${slug}/chat`)} onClick={onClose} />
+                <NavItem href={`/${slug}/plans`} label="Planos de ação" icon={<IcoPlans />} isActive={isActiveHref(`/${slug}/plans`)} onClick={onClose} />
+              </>
             )}
-          </div>
-
-          {/* ── IA ───────────────────────────────────── */}
-          <div className="sb-group">
-            <div className="sb-gl">IA</div>
-            <NavItem href="/chat" label="Mentor IA" icon={<IcoChat />} isActive={isActiveHref('/chat')} onClick={onClose} />
-          </div>
-
-          {/* ── CARREIRA ─────────────────────────────── */}
-          <div className="sb-group">
-            <div className="sb-gl">Carreira</div>
-            <span className="sb-mobile-hide"><NavItem href="/cv"    label="CV+ Editor" icon={<IcoCv />}    isActive={isActiveHref('/cv')}    onClick={onClose} /></span>
-            <span className="sb-mobile-hide"><NavItem href="/board" label="Job Board"  icon={<IcoBoard />} isActive={isActiveHref('/board')} onClick={onClose} /></span>
-            <NavItem href="/plans" label="Planos de ação" icon={<IcoPlans />} isActive={isActiveHref('/plans')} onClick={onClose} />
           </div>
         </div>
 

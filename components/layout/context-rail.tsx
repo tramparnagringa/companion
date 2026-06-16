@@ -79,7 +79,7 @@ export function ContextRail({ role, user }: ContextRailProps) {
       }} />
 
       {/* App */}
-      {btn(isApp, () => router.push('/today'), 'App', 'app',
+      {btn(isApp, () => router.push('/days'), 'App', 'app',
         <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" style={{ width: 16, height: 16 }}>
           <rect x="2" y="2" width="5" height="5" rx="1" />
           <rect x="9" y="2" width="5" height="5" rx="1" />

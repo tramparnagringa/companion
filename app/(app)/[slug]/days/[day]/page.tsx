@@ -43,8 +43,6 @@ export default async function ProgramDayPage({
       enrollmentId={enrollment.id}
       programId={enrollment.program_id}
       programName={enrollment.program.name}
-      programDescription={enrollment.program.description}
-      programFeatures={enrollment.program.features ?? []}
       programWeekThemes={enrollment.program.week_themes as Record<string, string> | undefined}
       slug={slug}
       programDay={programDay}

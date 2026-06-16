@@ -24,16 +24,17 @@ export default function DayChatPage() {
   const urlPrompt     = searchParams.get('prompt') ?? undefined
   const isReflect     = searchParams.get('reflect') === 'true'
   const jobId         = searchParams.get('jobId') ?? undefined
+  const urlSessionId  = searchParams.get('sessionId') ?? null
 
-  const [chatKey, setChatKey]             = useState('new')
-  const [sessionToLoad, setSessionToLoad] = useState<string | null>(null)
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null)
+  const [chatKey, setChatKey]             = useState(urlSessionId ?? 'new')
+  const [sessionToLoad, setSessionToLoad] = useState<string | null>(urlSessionId)
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(urlSessionId)
   const [panelRefresh, setPanelRefresh]   = useState(0)
   const [isPanelOpen, setIsPanelOpen]     = useState(false)
   const [userName, setUserName]           = useState<string | undefined>(undefined)
   const [jobContext, setJobContext]        = useState<JobContext | null>(null)
   const [jobLoading, setJobLoading]       = useState(!!jobId)
-  const [initialPrompt, setInitialPrompt] = useState<string | undefined>(jobId ? undefined : urlPrompt)
+  const [initialPrompt, setInitialPrompt] = useState<string | undefined>(urlSessionId ? undefined : (jobId ? undefined : urlPrompt))
 
   useEffect(() => {
     const supabase = createClient()

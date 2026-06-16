@@ -74,6 +74,14 @@ function buildSystemPrompt(program: any, phase: 'outline' | 'week' | 'refine'): 
   const base = `Você é um assistente especializado em criar programas de desenvolvimento de carreira para profissionais que buscam vagas internacionais.
 Programa: "${program.name}" — ${program.total_days} dias.
 
+## FORMATAÇÃO DE TEXTO — OBRIGATÓRIO
+Os campos "description" (do dia e dos cards) são renderizados como Markdown no app. Use formatação para dar vida ao texto:
+- **negrito** (\`**palavra**\`) para termos-chave, conceitos centrais, nomes de ferramentas e resultados esperados
+- *itálico* (\`*palavra*\`) para ênfases sutis, termos em inglês ou frases de impacto
+- Não use headings (#), listas ou blocos de código nesses campos — apenas prosa com bold/italic
+- O campo "name" do dia usa uma sintaxe especial: \`*palavra*\` (asterisco simples) renderiza como destaque coral/itálico no título grande. Use para a palavra mais impactante do título. Exemplo: \`"Quanto você vale no *mercado internacional*?"\`
+- O campo "ai_instructions" é lido pela IA, não pelo aluno — pode ser prosa direta sem formatação
+
 ## COMO SALVAR DADOS — LEIA COM ATENÇÃO
 Você NÃO tem acesso a funções ou ferramentas. Você não chama update_profile, save_day_output nem nada parecido.
 O único mecanismo de persistência é: **quando você escreve um bloco \`\`\`json ... \`\`\` na sua resposta, o sistema automaticamente lê, parseia e salva no banco**.
@@ -185,8 +193,8 @@ Quando o admin pedir uma semana, inclua na resposta um bloco \`\`\`json com este
       "description": "2-3 frases descrevendo o dia",
       "ai_instructions": "Instruções detalhadas para a IA conduzir a sessão: objetivo do dia, perguntas que deve fazer ao aluno, o que deve extrair, como deve fechar o dia.",
       "cards": [
-        { "type": "learn",   "title": "Por que isso importa",   "description": "Contexto ou conceito que prepara o aluno para a sessão." },
-        { "type": "action",  "title": "Sessão principal com IA", "description": "O que o aluno vai construir ou extrair nesta sessão com a IA. Descreva o objetivo, o que a IA vai perguntar e o que o aluno vai produzir." }
+        { "type": "learn",   "title": "Por que isso importa",   "description": "Contexto ou **conceito-chave** que prepara o aluno para a sessão. Use *itálico* para termos em inglês e **negrito** para ideias centrais." },
+        { "type": "action",  "title": "Sessão principal com IA", "description": "O que o aluno vai **construir** ou extrair nesta sessão com a IA. Descreva o objetivo, o que a IA vai perguntar e o que o aluno vai *produzir*." }
       ]
     }
   ]
@@ -229,8 +237,8 @@ Para salvar edições, inclua na resposta um bloco \`\`\`json com apenas os dias
       "name": "Nome do dia",
       "ai_instructions": "Instruções para a IA...",
       "cards": [
-        { "type": "learn",  "title": "Título do conceito", "description": "Texto explicativo que o aluno vai ler antes da sessão." },
-        { "type": "action", "title": "Título da sessão",   "description": "O que o aluno vai construir nesta sessão com a IA." }
+        { "type": "learn",  "title": "Título do conceito", "description": "Texto explicativo com **termos-chave em negrito** e *ênfases em itálico* que o aluno vai ler antes da sessão." },
+        { "type": "action", "title": "Título da sessão",   "description": "O que o aluno vai **construir** nesta sessão com a IA — descreva o resultado esperado com clareza." }
       ]
     }
   ]

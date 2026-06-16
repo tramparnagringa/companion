@@ -28,7 +28,7 @@ export function DayNotes({ notes }: { notes: ActionNote[] }) {
   const inlineNotes = notes.filter(n => n.type !== 'plan' && n.type !== 'action_items')
 
   return (
-    <div style={{ marginTop: 16, maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{ marginTop: 52, maxWidth: 720, display: 'flex', flexDirection: 'column', gap: 16 }}>
 
       {/* Plans / action items — use interactive PlanCard */}
       {planNotes.length > 0 && (

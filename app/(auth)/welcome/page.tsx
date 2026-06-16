@@ -246,7 +246,7 @@ export default async function WelcomePage() {
 
       {/* ── Header ─────────────────────────────────────────────────── */}
       <header className="ws-act-top">
-        <a href={hasAccess ? '/today' : '/welcome'} className="ws-act-brand">
+        <a href={hasAccess ? '/days' : '/welcome'} className="ws-act-brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <LogoMark size={32} />
           <div className="bs">
@@ -257,7 +257,7 @@ export default async function WelcomePage() {
 
         <nav className="ws-act-nav">
           {hasAccess && (
-            <a href="/today" className="ws-act-back">← Voltar ao app</a>
+            <a href="/days" className="ws-act-back">← Voltar ao app</a>
           )}
           <form action="/auth/signout" method="post">
             <button type="submit" className="ws-act-exit">Sair</button>

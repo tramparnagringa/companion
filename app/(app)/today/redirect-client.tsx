@@ -15,7 +15,7 @@ export function TodayRedirectClient({
   useEffect(() => {
     const last = localStorage.getItem('tng_active_slug')
     const slug = (last && slugs.includes(last)) ? last : defaultSlug
-    router.replace(`/${slug}/today`)
+    router.replace(`/${slug}/days`)
   }, [])
 
   return null

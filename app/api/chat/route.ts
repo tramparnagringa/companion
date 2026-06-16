@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { createServerClient } from '@/lib/supabase/server'
 import { checkTokenBalance, recordTokenUsage } from '@/lib/anthropic/check-tokens'
-import { buildSystemPrompt, type JobContext, type RecentContext } from '@/lib/anthropic/system-prompts'
+import { buildSystemPrompt, type JobContext, type RecentContext, type ProgramContext } from '@/lib/anthropic/system-prompts'
 import { ALL_TOOLS } from '@/lib/anthropic/tools'
 import { executeToolCall } from '@/lib/anthropic/tool-executor'
 import { getActiveEnrollment, getDayForUser, getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
@@ -74,7 +74,15 @@ export async function POST(req: Request) {
       ? { recentSessions, recentNotes }
       : null
 
-  const systemPrompt = buildSystemPrompt(mode!, dayNumber, candidateProfile, programDay?.ai_instructions, jobContext, recentContext)
+  const programContext: ProgramContext | null = (mode === 'mentor' && enrollment)
+    ? {
+        name:       enrollment.program.name,
+        description: (enrollment.program as { description?: string | null }).description ?? null,
+        weekThemes: (enrollment.program as { week_themes?: Record<string, string> | null }).week_themes ?? null,
+      }
+    : null
+
+  const systemPrompt = buildSystemPrompt(mode!, dayNumber, candidateProfile, programDay?.ai_instructions, jobContext, recentContext, programContext)
   const dayModel     = AI_MODELS.CHAT_DAY
   const dayMaxTokens = mode === 'cv' ? MAX_TOKENS.CHAT_CV : MAX_TOKENS.CHAT_STANDARD
 

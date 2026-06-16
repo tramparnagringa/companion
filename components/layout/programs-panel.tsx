@@ -65,7 +65,7 @@ export function ProgramsPanel({ enrollments, activeSlug, recommendedProgram, onC
   }, [onClose])
 
   function navigate(slug: string) {
-    router.push(`/${slug}/today`)
+    router.push(`/${slug}/days`)
     onClose()
   }
 
