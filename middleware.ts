@@ -47,7 +47,7 @@ export async function middleware(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const role = profile?.role ?? 'student'
+    const role = profile?.role ?? 'pending'
 
     // No access role — send to store page
     if (!ALLOWED_ROLES.includes(role)) {
