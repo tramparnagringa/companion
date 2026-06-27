@@ -4,7 +4,7 @@ import { checkTokenBalance, recordTokenUsage } from '@/lib/anthropic/check-token
 import { buildSystemPrompt, type JobContext, type RecentContext, type ProgramContext } from '@/lib/anthropic/system-prompts'
 import { ALL_TOOLS } from '@/lib/anthropic/tools'
 import { executeToolCall } from '@/lib/anthropic/tool-executor'
-import { getActiveEnrollment, getDayForUser, getEnrollmentBySlug, getProgramDay } from '@/lib/programs'
+import { getActiveEnrollment, getDayForUser, getEnrollmentBySlug, getProgramDay, getProgramDays } from '@/lib/programs'
 import { AI_MODELS, MAX_TOKENS } from '@/lib/anthropic/models'
 
 export async function POST(req: Request) {
@@ -44,13 +44,16 @@ export async function POST(req: Request) {
     ? await getEnrollmentBySlug(userId!, slug, supabase!)
     : await getActiveEnrollment(userId!, supabase!)
 
-  const [{ data: candidateProfile }, programDay, recentSessionsResult, recentNotesResult] = await Promise.all([
+  const [{ data: candidateProfile }, programDay, programDays, recentSessionsResult, recentNotesResult] = await Promise.all([
     supabase!.from('candidate_profiles').select('*').eq('user_id', userId!).single(),
     mode === 'task' && dayNumber !== undefined && enrollment
       ? getProgramDay(enrollment.program_id, dayNumber, supabase!)
       : mode === 'task' && dayNumber !== undefined
         ? getDayForUser(userId!, dayNumber, supabase!)
         : Promise.resolve(null),
+    mode === 'mentor' && enrollment
+      ? getProgramDays(enrollment.program_id, supabase!)
+      : Promise.resolve([]),
     supabase!
       .from('chat_sessions' as any)
       .select('title, mode, day_number, updated_at')
@@ -76,9 +79,10 @@ export async function POST(req: Request) {
 
   const programContext: ProgramContext | null = (mode === 'mentor' && enrollment)
     ? {
-        name:       enrollment.program.name,
+        name:        enrollment.program.name,
         description: (enrollment.program as { description?: string | null }).description ?? null,
-        weekThemes: (enrollment.program as { week_themes?: Record<string, string> | null }).week_themes ?? null,
+        weekThemes:  (enrollment.program as { week_themes?: Record<string, string> | null }).week_themes ?? null,
+        days:        programDays.map(d => ({ day_number: d.day_number, week_number: d.week_number, name: d.name })),
       }
     : null
 

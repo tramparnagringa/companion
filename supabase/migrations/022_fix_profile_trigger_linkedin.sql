@@ -20,12 +20,11 @@ begin
 end;
 $$ language plpgsql security definer;
 
--- Backfill existing users whose full_name was never captured
+-- Backfill existing users whose full_name or avatar_url was never captured
 UPDATE public.profiles p
 SET
-  full_name  = coalesce(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name'),
-  avatar_url = coalesce(u.raw_user_meta_data->>'avatar_url', u.raw_user_meta_data->>'picture')
+  full_name  = coalesce(p.full_name,  u.raw_user_meta_data->>'full_name',  u.raw_user_meta_data->>'name'),
+  avatar_url = coalesce(p.avatar_url, u.raw_user_meta_data->>'avatar_url', u.raw_user_meta_data->>'picture')
 FROM auth.users u
 WHERE p.id = u.id
-  AND p.full_name IS NULL
-  AND coalesce(u.raw_user_meta_data->>'full_name', u.raw_user_meta_data->>'name') IS NOT NULL;
+  AND (p.full_name IS NULL OR p.avatar_url IS NULL);

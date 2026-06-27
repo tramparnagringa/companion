@@ -15,7 +15,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') })
 
 // ── Inline imports from lib/ (avoids path alias issues in seed context) ─────
 // We import the raw data here. If the files move, update accordingly.
-import { DAYS, WEEK_THEMES } from '../lib/days'
+import { DAYS, WEEK_THEMES } from './bootcamp-data'
 import { getDayModelConfig } from '../lib/anthropic/system-prompts'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL

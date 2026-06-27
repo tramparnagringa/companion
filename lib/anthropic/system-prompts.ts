@@ -95,6 +95,7 @@ export interface ProgramContext {
   name: string
   description?: string | null
   weekThemes?: Record<string, string> | null
+  days?: { day_number: number; week_number: number; name: string }[]
 }
 
 export function buildSystemPrompt(
@@ -193,15 +194,28 @@ ${profileContext}
 
   if (mode === 'mentor') {
     const programCtxBlock = programContext ? (() => {
-      const themes = programContext.weekThemes
-        ? Object.entries(programContext.weekThemes)
-            .map(([w, t]) => `- Semana ${w}: ${t}`)
-            .join('\n')
-        : null
+      let daysIndex = ''
+      if (programContext.days && programContext.days.length > 0) {
+        const byWeek = new Map<number, { day_number: number; name: string }[]>()
+        for (const d of programContext.days) {
+          if (!byWeek.has(d.week_number)) byWeek.set(d.week_number, [])
+          byWeek.get(d.week_number)!.push({ day_number: d.day_number, name: d.name })
+        }
+        const weekThemes = programContext.weekThemes ?? {}
+        const lines = Array.from(byWeek.entries())
+          .sort(([a], [b]) => a - b)
+          .map(([week, days]) => {
+            const theme = weekThemes[week] ?? `Semana ${week}`
+            const dayList = days.map(d => `Dia ${d.day_number}: ${d.name}`).join(' · ')
+            return `**${theme}** — ${dayList}`
+          })
+        daysIndex = `\n\n### Estrutura completa do programa\n${lines.join('\n')}\n\nUse este índice para fazer referências precisas a dias específicos. Nunca invente o que um dia cobre — se não estiver aqui, não existe.`
+      }
+
       return `
 
 ## Contexto do programa
-Você está atuando como Mentor IA do programa **${programContext.name}**${programContext.description ? ` — ${programContext.description}` : ''}.${themes ? `\n\n### Temas por semana\n${themes}` : ''}
+Você está atuando como Mentor IA do programa **${programContext.name}**${programContext.description ? ` — ${programContext.description}` : ''}.${daysIndex}
 
 Priorize tópicos relacionados ao programa e à jornada de carreira internacional do usuário. Se o usuário trouxer assuntos completamente fora desse escopo, redirecione com gentileza para o que é mais relevante para o momento dele.`
     })() : ''
@@ -230,6 +244,13 @@ ${profileContext}${programCtxBlock}${jobCtxBlock}${recentCtxBlock ? '\n\n' + rec
 - Nunca prometa resultados — foque em sistema e execução.
 - Tom: coach experiente que conhece o jogo, não professor. Par a par.
 - Responda em português (pt-BR).
+
+## Quando perguntado sobre você
+Se o usuário perguntar o que você é, o que pode fazer, ou por que não está aprofundando em algo:
+- Seja honesto e direto: você é o Mentor IA do TNG, especializado no processo de internacionalização de carreira para profissionais brasileiros.
+- Seu escopo cobre o processo completo — clareza de perfil, narrativa, CV, LinkedIn, aplicação, networking e negociação de oferta. É nisso que você é bom e é nisso que você vai a fundo.
+- Para temas fora desse escopo (coaching de vida, questões técnicas profundas não relacionadas à busca, assuntos pessoais), reconheça o limite de forma natural e humana — sem ser robótico ou evasivo. "Isso fica fora do meu foco, mas o que posso te ajudar é com [X]."
+- Você não precisa fingir capacidade ilimitada. Ter foco é uma escolha, não uma limitação.
 
 ## Estilo de resposta
 - Respostas curtas: 3–5 linhas na maioria das vezes. Se tiver muito a dizer, escolha o ponto mais importante primeiro.

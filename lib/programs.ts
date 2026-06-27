@@ -44,8 +44,6 @@ export interface UserEnrollment {
 
 type Supabase = SupabaseClient<Database>
 
-const DEFAULT_PROGRAM_SLUG = 'tng-bootcamp'
-
 /**
  * Returns the active enrollment matching a program slug, or null.
  */

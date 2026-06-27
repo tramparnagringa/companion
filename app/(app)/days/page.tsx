@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
-import { WEEK_THEMES, getCurrentDay } from '@/lib/days'
+import { getCurrentDay } from '@/lib/days'
 import { redirect } from 'next/navigation'
 import { ensureEnrollment, getProgramDays } from '@/lib/programs'
 
@@ -35,12 +35,11 @@ export default async function DaysRedirect() {
     supabase.from('keywords').select('*', { count: 'exact', head: true }).eq('user_id', user!.id),
   ])
 
-  // Use program-specific week themes when available, fall back to bootcamp defaults
   const weekThemes: Record<number, string> = enrollment?.program.week_themes
     ? Object.fromEntries(
         Object.entries(enrollment.program.week_themes as Record<string, string>).map(([k, v]) => [Number(k), v])
       )
-    : WEEK_THEMES
+    : {}
 
   const numWeeks = programDays.length > 0
     ? Math.max(...programDays.map(d => d.week_number))

@@ -2,7 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
-import { DAYS, WEEK_THEMES, getCurrentDay, getStreak } from '@/lib/days'
+import { getCurrentDay, getStreak } from '@/lib/days'
+import { ensureEnrollment, getProgramDays } from '@/lib/programs'
+import { redirect } from 'next/navigation'
 
 export const metadata: Metadata = { title: 'Progresso' }
 
@@ -10,7 +12,18 @@ export default async function ProgressPage() {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const [{ data: activities }, { data: jobs }, { data: keywords }] = await Promise.all([
+  const enrollment = await ensureEnrollment(user!.id, supabase)
+  if (!enrollment) redirect('/programs')
+
+  const totalDays = enrollment.program.total_days
+  const weekThemes: Record<number, string> = enrollment.program.week_themes
+    ? Object.fromEntries(
+        Object.entries(enrollment.program.week_themes as Record<string, string>).map(([k, v]) => [Number(k), v])
+      )
+    : {}
+
+  const [programDays, { data: activities }, { data: jobs }, { data: keywords }] = await Promise.all([
+    getProgramDays(enrollment.program_id, supabase),
     supabase.from('day_activities').select('day_number, status, completed_at').eq('user_id', user!.id),
     supabase.from('jobs').select('status').eq('user_id', user!.id),
     supabase.from('keywords').select('word, frequency').eq('user_id', user!.id).order('frequency', { ascending: false }).limit(30),
@@ -18,7 +31,7 @@ export default async function ProgressPage() {
 
   const allActivities = activities ?? []
   const completedDayNumbers = allActivities.filter(a => a.status === 'done').map(a => a.day_number)
-  const currentDay    = getCurrentDay(completedDayNumbers)
+  const currentDay    = getCurrentDay(completedDayNumbers, totalDays)
   const streak        = getStreak(allActivities)
 
   const doneCount     = completedDayNumbers.length
@@ -28,7 +41,8 @@ export default async function ProgressPage() {
 
   const statusMap = new Map(allActivities.map(a => [a.day_number, a.status]))
 
-  const weeks = [1, 2, 3, 4]
+  const numWeeks = programDays.length > 0 ? Math.max(...programDays.map(d => d.week_number)) : 0
+  const weeks = Array.from({ length: numWeeks }, (_, i) => i + 1)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -62,7 +76,7 @@ export default async function ProgressPage() {
           }
         }
       `}</style>
-      <Topbar title="Progresso" subtitle="Sua jornada de 30 dias" streak={streak} />
+      <Topbar title="Progresso" subtitle={`Sua jornada de ${totalDays} dias`} streak={streak} />
       <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
 
         {/* Stats grid */}
@@ -87,11 +101,11 @@ export default async function ProgressPage() {
         {/* Heatmap por semana */}
         <div style={{ marginBottom: 22 }}>
           <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text2)', marginBottom: 12 }}>
-            Mapa dos 30 dias
+            Mapa dos {totalDays} dias
           </div>
           <div className="progress-heatmap-weeks">
             {weeks.map(week => {
-              const weekDays = DAYS.filter(d => d.week === week)
+              const weekDays = programDays.filter(d => d.week_number === week)
               return (
                 <div key={week} className="progress-heatmap-week">
                   <div style={{
@@ -99,10 +113,10 @@ export default async function ProgressPage() {
                     textTransform: 'uppercase', color: 'var(--text4)',
                     marginBottom: 6,
                   }}>
-                    {WEEK_THEMES[week] ?? `Semana ${week}`}
+                    {weekThemes[week] ?? `Semana ${week}`}
                   </div>
                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                    {weekDays.map(({ number: day, name }) => {
+                    {weekDays.map(({ day_number: day, name }) => {
                       const status    = statusMap.get(day)
                       const isDone    = status === 'done'
                       const isCurrent = day === currentDay

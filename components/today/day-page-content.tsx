@@ -4,7 +4,7 @@ import { createServerClient } from '@/lib/supabase/server'
 import { Topbar } from '@/components/layout/topbar'
 import { DayContent } from '@/components/today/day-content'
 import { DayNotes } from '@/components/today/day-notes'
-import { DAYS, getCurrentDay, getStreak } from '@/lib/days'
+import { getCurrentDay, getStreak } from '@/lib/days'
 import type { DayDefinition, CardType } from '@/lib/days'
 import { getProgramDay } from '@/lib/programs'
 import type { ProgramDay } from '@/lib/programs'
@@ -158,13 +158,13 @@ export async function DayPageContent({ dayNumber, isToday, totalDays: totalDaysP
           }
         }),
       }
-    : DAYS.find(d => d.number === dayNumber)
+    : undefined
 
   if (!dayDef) notFound()
 
   const nextDay: { day_number: number; week_number: number } | null = programDay
     ? await getProgramDay(programDay.program_id, dayNumber + 1, supabase).then(n => n ? { day_number: n.day_number, week_number: n.week_number } : null)
-    : (() => { const n = DAYS.find(d => d.number === dayNumber + 1); return n ? { day_number: n.number, week_number: n.week } : null })()
+    : null
 
   const hasPrev = dayNumber > 1
   const hasNext = dayNumber < totalDays && dayNumber < currentDay
